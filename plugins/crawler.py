@@ -62,8 +62,8 @@ class Crawler:
             url, headers=self.headers).text  # , verify=False if needed
 
     def __process_path(self, url, path):
-        if '#' in path:
-            path = path.split('#')[0]
+        # if '#' in path:
+        #     path = path.split('#')[0]
         if path.startswith('http'):
             return path
         path = urljoin(url, path)
