@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from pickletools import uint1
 import re
+from threading import Lock
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup as bs
@@ -19,6 +20,8 @@ class Crawler:
     }
 
     URL_REG = r'http[s]?:[\\]?/[\\]?/(?:(?!http[s]?:[\\]?/[\\]?/)[a-zA-Z]|[0-9]|[\\]?[$\-_@.&+/]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+
+    LOCK = Lock()
 
     def __init__(self, url, threads, headers):
         self.base = url
@@ -81,7 +84,7 @@ class Crawler:
             if u not in self.URLS['visited']:
                 self.URLS['visited'].add(u)
                 self.__write(u, '3. Extracted')
-                print(f'{self.ORANGE}EXTRACT  :: {u}{self.WHITE}')
+                self.__print(f'{self.ORANGE}EXTRACT  :: {u}{self.WHITE}')
 
     def __get_script_sources(self, url, soup):
         for script in soup.find_all('script'):
@@ -113,7 +116,7 @@ class Crawler:
         # Tag <form>
         for url in self.__get_form_actions(url, soup):
             if url not in self.URLS['visited']:
-                print(f'{self.DARKCYAN}F-ACTION :: {url}{self.WHITE}')
+                self.__print(f'{self.DARKCYAN}F-ACTION :: {url}{self.WHITE}')
                 self.__add_not_visited(url)
 
     def __get_dir(self, url):
@@ -131,22 +134,27 @@ class Crawler:
 
     def __write_script(self, url):
         self.__write(url, '4. JS')
-        print(f'{self.CYAN}JS File  :: {url}{self.WHITE}')
+        self.__print(f'{self.CYAN}JS File  :: {url}{self.WHITE}')
 
     def __thread(self):
         url = self.__add_visited()
         if url in self.URLS['external']:
             self.__write(url, '2. External')
-            print(f'{self.YELLOW}EXTERNAL :: {url}{self.WHITE}')
+            self.__print(f'{self.YELLOW}EXTERNAL :: {url}{self.WHITE}')
         else:
             directory = self.__get_dir(url)
             self.__write(url, directory)
-            print(f'{self.GREEN}CRAWLING :: {url}{self.WHITE}')
+            self.__print(f'{self.GREEN}CRAWLING :: {url}{self.WHITE}')
             # if not 'logout' in url: # TODO
             try:
                 self.__process_url(url)
             except Exception as e:
                 print(f'ERROR    :: Failed to crawl: {url}', e)
+
+    def __print(self, output):
+        self.LOCK.acquire()
+        print(output)
+        self.LOCK.release()
 
     def crawl(self):
         tmp = list(self.URLS['not_visited'])
