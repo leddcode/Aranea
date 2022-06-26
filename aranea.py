@@ -4,6 +4,7 @@ from mixins.base import Base
 from mixins.colour import Colour
 from plugins.analysis import Analysis
 from plugins.crawler import Crawler
+from requests import ConnectionError
 from utils import strings
 
 
@@ -47,7 +48,12 @@ if __name__ == '__main__':
  Threads :: {threads}
     ''')
 
-    if 'crawl' in mode:
-        Aranea(url, threads, headers).crawl()
-    elif 'analysis' in mode:
-        Aranea(url, threads, headers).analize()
+    try:
+        if 'crawl' in mode:
+            Aranea(url, threads, headers).crawl()
+        elif 'analysis' in mode:
+            Aranea(url, threads, headers).analize()
+    except ConnectionError:
+        print(f'{Aranea.RED} Connection Error: Please check the URL address and try again - {url}{Aranea.WHITE}')
+    except Exception as e:
+        print(e)
