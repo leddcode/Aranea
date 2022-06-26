@@ -5,6 +5,7 @@ from mixins.colour import Colour
 from plugins.analysis import Analysis
 from plugins.crawler import Crawler
 from requests import ConnectionError
+
 from utils import strings
 
 

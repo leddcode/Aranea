@@ -1,6 +1,4 @@
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -56,8 +54,6 @@ class Base:
             url, headers=self.headers).text  # , verify=False if needed
 
     def _process_path(self, url, path):
-        # if '#' in path:
-        #     path = path.split('#')[0]
         if path.startswith('http'):
             return path
         path = urljoin(url, path)
