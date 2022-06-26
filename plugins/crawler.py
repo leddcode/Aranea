@@ -3,9 +3,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import re
 from threading import Lock
+from tkinter import EXCEPTION
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup as bs
+from requests import ConnectionError
 
 
 class Crawler:
@@ -97,8 +99,12 @@ class Crawler:
             # if not 'logout' in url: # TODO
             try:
                 self.__process_url(url)
-            except Exception as e:
-                print(f'ERROR    :: Failed to crawl: {url}', e)
+            except ConnectionError:
+                print(
+                    f'{self.RED}ERROR    :: Failed to establish a new connection!{self.WHITE} ({url})')
+            except EXCEPTION:
+                print(
+                    f'{self.RED}ERROR    :: Failed to crawl!{self.WHITE} ({url})')
 
     def __print(self, output):
         self.LOCK.acquire()
