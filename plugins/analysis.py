@@ -30,7 +30,8 @@ class Analysis:
         if k not in dic:
             dic[k] = [v]
         else:
-            dic[k].append(v)
+            if v not in dic[k]:
+                dic[k].append(v)
         return dic
 
     def __get_pathes(self, js):
