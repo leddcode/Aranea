@@ -79,7 +79,7 @@ class Analysis:
             count += 1
         return count
 
-    def analize(self):
+    def analyze(self):
         main_js = self.__find_mainjs(self.base)
         if main_js:
             print(f'{self.CYAN} Fetch JS File{self.WHITE}')
