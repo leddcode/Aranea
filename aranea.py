@@ -1,11 +1,13 @@
 import argparse
 
+from mixins.base import Base
 from mixins.colour import Colour
+from plugins.analysis import Analysis
 from plugins.crawler import Crawler
 from utils import strings
 
 
-class Aranea(Colour, Crawler):
+class Aranea(Base, Colour, Analysis, Crawler):
 
     def __init__(self, url, threads, headers):
         super().__init__(url, threads, headers)
@@ -47,5 +49,5 @@ if __name__ == '__main__':
 
     if 'crawl' in mode:
         Aranea(url, threads, headers).crawl()
-    if 'analysis' in mode:
-        print('Analysis mode not implemented')
+    elif 'analysis' in mode:
+        Aranea(url, threads, headers).analize()
