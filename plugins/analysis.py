@@ -57,13 +57,15 @@ class Analysis:
             .replace('"', '').replace("'", "")
 
     def __print_objects(self, objects, js):
+        printed = []
         for section in self.SECTIONS:
             print(f'{self.CYAN}\n # {section}{self.WHITE}')
             count = 0
             for o in objects:
-                if section.lower() in o.lower():
+                if section.lower() in o.lower() and o not in printed:
                     print(f'{self.YELLOW} > {self.__pretty_entry(o)}{self.WHITE}')
                     count += 1
+                    printed.append(o)
             if section == 'Path':
                 count = self.__print_pathes(js, count)
             if not count:
