@@ -3,7 +3,6 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import re
 from threading import Lock
-from tkinter import EXCEPTION
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup as bs
