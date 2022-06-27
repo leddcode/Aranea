@@ -17,4 +17,3 @@ toml==0.10.2
 tzdata==2022.1
 tzlocal==4.2
 urllib3==1.26.9
-win-unicode-console==0.5

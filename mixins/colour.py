@@ -1,6 +1,5 @@
 import sys
 
-import win_unicode_console
 import colorama
 
 
@@ -19,7 +18,6 @@ class Colour:
 
     if sys.platform.startswith('win'):
         try:
-            win_unicode_console.enable()
             colorama.init()
         except Exception:
             PURPLE = ''
