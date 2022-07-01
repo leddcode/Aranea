@@ -101,7 +101,7 @@ class Crawler:
             except ConnectionError:
                 print(
                     f'{self.RED}ERROR    :: Failed to establish a new connection!{self.WHITE} ({url})')
-            except EXCEPTION:
+            except Exception:
                 print(
                     f'{self.RED}ERROR    :: Failed to crawl!{self.WHITE} ({url})')
 
