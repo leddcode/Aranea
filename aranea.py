@@ -50,10 +50,10 @@ if __name__ == '__main__':
     ''')
 
     try:
+        if 'analysis' in mode:
+            Aranea(url, threads, headers).analyze()
         if 'crawl' in mode:
             Aranea(url, threads, headers).crawl()
-        elif 'analysis' in mode:
-            Aranea(url, threads, headers).analyze()
     except ConnectionError:
         print(f'{Aranea.RED} Connection Error: Please check the URL address and try again - {url}{Aranea.WHITE}')
     except Exception as e:
