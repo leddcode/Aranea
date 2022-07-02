@@ -18,7 +18,16 @@ class Crawler:
         'not_visited': deque([])
     }
 
+    DIRS = {
+        'general': '1. General',
+        'external': '2. External',
+        'extracted': '3. Extracted',
+        'js': '4. JS',
+        'emails': '5 Emails'
+    }
+
     URL_REG = r'http[s]?:[\\]?/[\\]?/(?:(?!http[s]?:[\\]?/[\\]?/)[a-zA-Z]|[0-9]|[\\]?[$\-_@.&+/]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+    EMAIL_REG = r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)"
 
     LOCK = Lock()
 
@@ -28,12 +37,19 @@ class Crawler:
             if path and path != '/':
                 yield self._process_path(url, path)
 
+    def __reg_extract_emails(self, text, emails=set()):
+        for email in set(re.findall(self.EMAIL_REG, text)):
+            if email not in emails:
+                emails.add(email)
+                self.__write(email, self.DIRS['emails'])
+                self.__print(f'{self.BLUE}EMAIL    :: {email}{self.WHITE}')
+
     def __reg_extract_uls(self, soup):
         for url in set(re.findall(self.URL_REG, soup.text)):
             u = url.replace('\\', '')
             if u not in self.URLS['visited']:
                 self.URLS['visited'].add(u)
-                self.__write(u, '3. Extracted')
+                self.__write(u, self.DIRS['extracted'])
                 self.__print(f'{self.ORANGE}EXTRACT  :: {u}{self.WHITE}')
 
     def __get_script_sources(self, url, soup):
@@ -69,12 +85,15 @@ class Crawler:
                 self.__print(f'{self.DARKCYAN}F-ACTION :: {url}{self.WHITE}')
                 self._add_not_visited(url)
 
+        # Extract Emails
+        self.__reg_extract_emails(html)
+
     def __get_dir(self, url):
         directories = urlparse(url).path.split('/')
         if ((len(directories) > 1 and urlparse(url).query)
                 or (len(directories) > 2 and directories[2])):
             return directories[1]
-        return '1. General'
+        return self.DIRS['general']
 
     def __write(self, url, directory):
         filepath = Path(f'scans/{self.domain[0]}/{directory}.txt')
@@ -83,13 +102,13 @@ class Crawler:
             f.write(f'{url}\n')
 
     def __write_script(self, url):
-        self.__write(url, '4. JS')
+        self.__write(url, self.DIRS['js'])
         self.__print(f'{self.CYAN}JS File  :: {url}{self.WHITE}')
 
     def __thread(self):
         url = self._add_visited()
         if url in self.URLS['external']:
-            self.__write(url, '2. External')
+            self.__write(url, self.DIRS['external'])
             self.__print(f'{self.YELLOW}EXTERNAL :: {url}{self.WHITE}')
         else:
             directory = self.__get_dir(url)
