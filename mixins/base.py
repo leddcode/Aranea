@@ -1,7 +1,9 @@
 from collections import deque
 from urllib.parse import urljoin, urlparse
+from urllib3.exceptions import InsecureRequestWarning
 
 import requests
+from requests.exceptions import SSLError
 
 
 class Base:
@@ -50,8 +52,14 @@ class Base:
         return url
 
     def _get_page_source(self, url):
-        return requests.get(
-            url, headers=self.headers).text  # , verify=False if needed
+        requests.packages.urllib3.disable_warnings(
+            category=InsecureRequestWarning)
+        try:
+            return requests.get(
+                url, headers=self.headers).text
+        except SSLError:
+            return requests.get(
+                url, headers=self.headers, verify=False).text
 
     def _process_path(self, url, path):
         if path.startswith('http'):

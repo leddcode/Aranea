@@ -1,7 +1,6 @@
 import re
 
 from bs4 import BeautifulSoup as bs
-import requests
 
 
 class Analysis:
@@ -83,7 +82,7 @@ class Analysis:
         main_js = self.__find_mainjs(self.base)
         if main_js:
             print(f'{self.CYAN} Fetch JS File{self.WHITE}')
-            js = requests.get(main_js).text
+            js = self._get_page_source(main_js)
             print(f'{self.CYAN} Parse JS Code{self.WHITE}')
             objects = re.findall(self.REG_O, js) + re.findall(self.REG_L, js)
             self.__print_objects(set(objects), js)
