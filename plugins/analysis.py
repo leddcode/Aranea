@@ -33,21 +33,46 @@ class Analysis:
                 dic[k].append(v)
         return dic
 
+    def __extract_pathes(self, data):
+        pathes = {}
+        checked = []
+        for e in data:
+            if e.lower() in checked:
+                # TODO
+                # Add printing
+                pass
+            elif e.startswith('/') and e[1].isalnum():
+                if 'api' in e.lower():
+                    self.__add_to_dict('API Pathes', e, pathes)
+                elif 'login' in e.lower():
+                    self.__add_to_dict('Auth Pathes', e, pathes)
+                elif 'register' in e.lower():
+                    self.__add_to_dict('Auth Pathes', e, pathes)
+                elif 'user' in e.lower():
+                    self.__add_to_dict('User Paths', e, pathes)
+                elif 'admin' in e.lower():
+                    self.__add_to_dict('Admin Paths', e, pathes)
+                elif 'role' in e.lower():
+                    self.__add_to_dict('Role Paths', e, pathes)
+                else:
+                    self.__add_to_dict('Other Paths', e, pathes)
+            elif '/' in e and len(e) < 100:
+                if e[:3].lower() == 'api':
+                    self.__add_to_dict('API Pathes', e, pathes)
+                else:
+                    self.__add_to_dict('Possible Paths', e, pathes)
+            checked.append(e.lower())
+        return pathes
+
     def __get_pathes(self, js):
         data = (
-            e for e in js.split('"')
-            if len(e) > 1 and e.startswith('/') and e[1].isalnum()
+            entry for entry in js.split('"')
+            if (
+                len(entry) > 1 and not any(
+                    char in [' ', '\n', r'\\\\\\', '$', '<', '>', '*', '(', ')'] for char in entry)
+            )
         )
-        pathes = {}
-        for e in data:
-            if 'user' in e.lower():
-                self.__add_to_dict('User Pathes', e, pathes)
-            elif 'admin' in e.lower():
-                self.__add_to_dict('Admin Pathes', e, pathes)
-            elif 'role' in e.lower():
-                self.__add_to_dict('Role Pathes', e, pathes)
-            else:
-                self.__add_to_dict('Other Pathes', e, pathes)
+        pathes = self.__extract_pathes(data)
         return pathes
 
     def __pretty_entry(self, entry):
