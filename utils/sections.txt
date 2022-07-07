@@ -1,10 +1,10 @@
-Path
+Settings
+Config
+Secret
 Admin
 Role
 User
-API
 Customer
 Password
-Secret
-Settings
-Config
+API
+Path
