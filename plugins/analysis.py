@@ -69,11 +69,10 @@ class Analysis:
             entry for entry in js.split('"')
             if (
                 len(entry) > 1 and not any(
-                    char in [' ', '\n', r'\\\\\\', '$', '<', '>', '*', '(', ')'] for char in entry)
+                    char in [' ', '\n', '$', '<', '>', '*', '(', ')', '\\'] for char in entry)
             )
         )
-        pathes = self.__extract_pathes(data)
-        return pathes
+        return self.__extract_pathes(data)
 
     def __pretty_entry(self, entry):
         return entry.replace("{", "\n\t").replace("[", "\n\t").replace(", ", "\n\t") \
