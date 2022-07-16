@@ -31,7 +31,7 @@ optional arguments:
                         Default configuration: 10 threads
   -H HEADERS, --headers HEADERS
                         Should be a string as in the example:
-                        'Authorization:Bearer ey..,Cookie:role=admin;'
+                        "Authorization:Bearer ey..,Cookie:role=admin;"
 ```
 
 ## Example

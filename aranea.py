@@ -28,7 +28,7 @@ class Aranea(Base, Colour, Analysis, Crawler):
             help="Default configuration: 10 threads", default=10)
         parser.add_argument(
             '-H', '--headers',
-            help="Should be a string as in the example: 'Authorization:Bearer ey..,Cookie:role=admin;'",
+            help='Should be a string as in the example: "Authorization:Bearer ey..,Cookie:role=admin;"',
             default='')
         return parser.parse_args()
 
