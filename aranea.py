@@ -11,8 +11,8 @@ from utils import strings
 
 class Aranea(Base, Colour, Analysis, Crawler):
 
-    def __init__(self, url, threads, headers):
-        super().__init__(url, threads, headers)
+    def __init__(self, url, threads, headers, strict):
+        super().__init__(url, threads, headers, strict)
 
     @staticmethod
     def parse_args():
@@ -30,6 +30,10 @@ class Aranea(Base, Colour, Analysis, Crawler):
             '-H', '--headers',
             help='Should be a string as in the example: "Authorization:Bearer ey..,Cookie:role=admin;"',
             default='')
+        parser.add_argument(
+            '-S', '--strict',
+            help="For analysis mode: the URL will be parsed even if it does not have a JS extension.",
+            action='store_true')
         return parser.parse_args()
 
 
@@ -39,6 +43,7 @@ if __name__ == '__main__':
     threads = int(args.threads)
     headers = args.headers.strip()
     mode = args.mode.strip()
+    strict = args.strict
 
     print(strings.SOLID)
     print(strings.INTRO)
@@ -51,7 +56,7 @@ if __name__ == '__main__':
 
     try:
         if 'analysis' in mode:
-            Aranea(url, threads, headers).analyze()
+            Aranea(url, threads, headers, strict).analyze()
         elif 'crawl' in mode:
             Aranea(url, threads, headers).crawl()
         else:

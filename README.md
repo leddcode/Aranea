@@ -1,6 +1,6 @@
 # Aranea
 
-Aranea may be used as an additional OSINT tool for web application investigations, by crawling the links of the webapp or by examining the Main.js file for likely useful data.
+Aranea may be used as an additional OSINT tool for web application investigations, by crawling the links of the webapp or by examining the JavaScript files for likely useful data.
 
 ![Build](https://img.shields.io/badge/Built%20with-Python-Blue)
 
@@ -9,7 +9,7 @@ Aranea may be used as an additional OSINT tool for web application investigation
 Clone the Repo:
 
 ```sh
-git clone https://github.com/enotr0n/Aranea
+git clone https://github.com/leddcode/Aranea
 ```
 
 Install requirements:
@@ -21,7 +21,7 @@ pip3 install -r requirements.txt
 ## Usage
 
 ```sh
-usage: aranea.py [-h] -U URL -M MODE [-T THREADS] [-H HEADERS]
+usage: aranea.py [-h] -U URL -M MODE [-T THREADS] [-H HEADERS] [-S]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -32,20 +32,34 @@ optional arguments:
   -H HEADERS, --headers HEADERS
                         Should be a string as in the example:
                         "Authorization:Bearer ey..,Cookie:role=admin;"
+  -S, --strict          For analysis mode: the URL will be parsed even if it
+                        does not have a JS extension.
 ```
 
 ## Example
 
-In crawling mode, all results are stored in the scans directory.
+Crawling (all results are stored in the scans directory).
 
 ```sh
 python3 aranea.py -U https://example.com -M crawl -T 100
 ```
 
-If Main.js is not found during analysis or if you want to analyze another JS file, you can pass its address directly to the URL parameter.
+Using analysis mode, locate and parse the file Main.js.
 
 ```sh
 python3 aranea.py -U https://example.com -M analysis
+```
+
+In case Main.js was not found or if you want to analyze another JS file, specify its address in the URL parameter.
+
+```sh
+python3 aranea.py -U https://example.com/script.js -M analysis
+```
+
+Use the -S flag if the JS file does not have a .js extension.
+
+```sh
+python3 aranea.py -U https://example.com/script -M analysis -S
 ```
 
 ## Contributing

@@ -19,7 +19,7 @@ class Analysis:
                 yield self._process_path(url, path)
 
     def __find_mainjs(self, url):
-        if '.js' in url:
+        if '.js' in url or self.strict:
             return url
         for js_file in self.__get_js_urls(url):
             if 'main' in js_file:
