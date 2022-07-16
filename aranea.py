@@ -45,20 +45,24 @@ if __name__ == '__main__':
     mode = args.mode.strip()
     strict = args.strict
 
+    banner = f'''
+ URL     :: {url}
+ Mode    :: {mode}
+ '''
+
+    if mode == 'crawl':
+        banner += f'Threads :: {threads}\n'
+
     print(strings.SOLID)
     print(strings.INTRO)
     print(strings.SOLID)
-    print(f'''
- URL     :: {url}
- Mode    :: {mode}
- Threads :: {threads}
-    ''')
+    print(banner)
 
     try:
         if 'analysis' in mode:
             Aranea(url, threads, headers, strict).analyze()
         elif 'crawl' in mode:
-            Aranea(url, threads, headers).crawl()
+            Aranea(url, threads, headers, strict).crawl()
         else:
             print(
                 f'{Aranea.RED} The mode "{mode}" does not exist!{Aranea.WHITE}')
