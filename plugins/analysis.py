@@ -2,6 +2,8 @@ import re
 
 from bs4 import BeautifulSoup as bs
 
+from utils.strings import MAINJS_NOT_FOUND
+
 
 class Analysis:
 
@@ -111,4 +113,4 @@ class Analysis:
             objects = re.findall(self.REG_O, js) + re.findall(self.REG_L, js)
             self.__print_objects(set(objects), js)
         else:
-            print(f"{self.RED} Main js file wasn't found!{self.WHITE}")
+            print(f"{self.RED}{MAINJS_NOT_FOUND}{self.WHITE}")

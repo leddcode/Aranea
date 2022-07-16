@@ -8,3 +8,9 @@ INTRO = '''
 
 SOLID = '''
 __________________________________________________________'''
+
+MAINJS_NOT_FOUND = '''
+ Main.js file wasn't found!
+ Please, provide the exact url of the JS file.
+ If necessary, use the -S flag.
+'''
