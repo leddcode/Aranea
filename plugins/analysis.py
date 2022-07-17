@@ -45,11 +45,11 @@ class Analysis:
                 pass
             elif e.startswith('/') and e[1].isalnum():
                 if 'api' in e.lower():
-                    self.__add_to_dict('API Pathes', e, pathes)
+                    self.__add_to_dict('API Paths', e, pathes)
                 elif 'login' in e.lower():
-                    self.__add_to_dict('Auth Pathes', e, pathes)
+                    self.__add_to_dict('Auth Paths', e, pathes)
                 elif 'register' in e.lower():
-                    self.__add_to_dict('Auth Pathes', e, pathes)
+                    self.__add_to_dict('Auth Paths', e, pathes)
                 elif 'user' in e.lower():
                     self.__add_to_dict('User Paths', e, pathes)
                 elif 'admin' in e.lower():
@@ -60,7 +60,7 @@ class Analysis:
                     self.__add_to_dict('Other Paths', e, pathes)
             elif '/' in e and len(e) < 100:
                 if e[:3].lower() == 'api':
-                    self.__add_to_dict('API Pathes', e, pathes)
+                    self.__add_to_dict('API Paths', e, pathes)
                 else:
                     self.__add_to_dict('Possible Paths', e, pathes)
             checked.append(e.lower())
