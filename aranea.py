@@ -1,11 +1,11 @@
 import argparse
 
+from requests import ConnectionError
+
 from mixins.base import Base
 from mixins.colour import Colour
 from plugins.analysis import Analysis
 from plugins.crawler import Crawler
-from requests import ConnectionError
-
 from utils import strings
 
 
