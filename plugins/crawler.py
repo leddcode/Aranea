@@ -23,7 +23,8 @@ class Crawler:
         'external': '2. External',
         'extracted': '3. Extracted',
         'js': '4. JS',
-        'emails': '5 Emails'
+        'emails': '5 Emails',
+        'parametrized': '6 Parametrized (for XSS and CSVi tests)'
     }
 
     URL_REG = r'http[s]?:[\\]?/[\\]?/(?:(?!http[s]?:[\\]?/[\\]?/)[a-zA-Z]|[0-9]|[\\]?[$\-_@.&+/]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
@@ -66,6 +67,10 @@ class Crawler:
                 yield self._process_path(url, path)
 
     def __process_url(self, url):
+        # Add to list of parametrized urls for future injection tests.
+        self.__write_parametrized(url)
+
+        # Continue crawling
         html = self._get_page_source(url)
         soup = bs(html, 'html.parser')
 
@@ -100,6 +105,11 @@ class Crawler:
         filepath.parent.mkdir(parents=True, exist_ok=True)
         with open(filepath, 'a+', encoding='utf-8', errors='ignore') as f:
             f.write(f'{url}\n')
+    
+    def __write_parametrized(self, url):
+        parsed_url = urlparse(url)
+        if '=' in parsed_url.query:
+            self.__write(url, self.DIRS['parametrized'])
 
     def __write_script(self, url):
         self.__write(url, self.DIRS['js'])
