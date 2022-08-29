@@ -96,7 +96,9 @@ class Crawler:
 
         # Tag <form>
         for url in self.__get_form_actions(url, soup):
-            if url not in self.URLS['visited']:
+            if (
+                url not in self.URLS['visited']
+                    and url not in self.URLS['not_visited']):
                 self.__print(f'{self.DARKCYAN}F-ACTION :: {url}{self.WHITE}')
                 self._add_not_visited(url)
 
