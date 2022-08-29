@@ -13,8 +13,8 @@ class Analysis:
     SECTIONS = open('utils/sections.txt').read().splitlines()
 
     def __get_js_urls(self, url):
-        html = self._get_page_source(url)
-        soup = bs(html, 'html.parser')
+        http = self._get_page_source(url).text
+        soup = bs(http, 'html.parser')
         for script in soup.find_all('script'):
             path = script.get('src')
             if path:
@@ -108,7 +108,7 @@ class Analysis:
         main_js = self.__find_mainjs(self.base)
         if main_js:
             print(f'{self.CYAN} Fetch JS File{self.WHITE}')
-            js = self._get_page_source(main_js)
+            js = self._get_page_source(main_js).text
             print(f'{self.CYAN} Parse JS Code{self.WHITE}')
             objects = re.findall(self.REG_O, js) + re.findall(self.REG_L, js)
             self.__print_objects(set(objects), js)

@@ -56,11 +56,10 @@ class Base:
         requests.packages.urllib3.disable_warnings(
             category=InsecureRequestWarning)
         try:
-            return requests.get(
-                url, headers=self.headers).text
+            return requests.get(url, headers=self.headers)
         except SSLError:
             return requests.get(
-                url, headers=self.headers, verify=False).text
+                url, headers=self.headers, verify=False)
 
     def _process_path(self, url, path):
         if path.startswith('http'):

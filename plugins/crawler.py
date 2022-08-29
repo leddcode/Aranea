@@ -45,17 +45,20 @@ class Crawler:
                 self.__write(email, self.DIRS['emails'])
                 self.__print(f'{self.BLUE}EMAIL    :: {email}{self.WHITE}')
 
-    def __reg_extract_uls(self, soup):
-        for url in set(re.findall(self.URL_REG, soup.text)):
+    def __reg_extract_uls(self, text):
+        for url in set(re.findall(self.URL_REG, text)):
             u = url.replace('\\', '')
             if u not in self.URLS['visited']:
-                self.URLS['visited'].add(u)
-                self.__write(u, self.DIRS['extracted'])
-                self.__print(f'{self.ORANGE}EXTRACT  :: {u}{self.WHITE}')
+                if urlparse(u).netloc in self.base:
+                    self._add_not_visited(u)
+                else:
+                    self.URLS['visited'].add(u)
+                    self.__write(u, self.DIRS['extracted'])
+                    self.__print(f'{self.ORANGE}EXTRACT  :: {u}{self.WHITE}')
 
     def __get_script_sources(self, url, soup):
         for script in soup.find_all('script'):
-            self.__reg_extract_uls(script)
+            self.__reg_extract_uls(script.text)
             path = script.get('src')
             if path:
                 yield self._process_path(url, path)
@@ -70,8 +73,15 @@ class Crawler:
         # Add to list of parametrized urls for future injection tests.
         self.__write_parametrized(url)
 
-        # Continue crawling
-        html = self._get_page_source(url)
+        # Continue crawling.
+        res = self._get_page_source(url)
+
+        # Case 1 - JSON
+        if 'application/json' in res.headers.get('Content-Type'):
+            return self.__reg_extract_uls(str(res.json()))
+
+        # Case 2 - HTML
+        html = res.text
         soup = bs(html, 'html.parser')
 
         # Tag <a>
