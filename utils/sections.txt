@@ -1,6 +1,7 @@
 Settings
 Config
 Secret
+Token
 Admin
 Role
 User
