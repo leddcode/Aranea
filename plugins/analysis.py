@@ -7,7 +7,7 @@ from utils.strings import MAINJS_NOT_FOUND
 
 class Analysis:
 
-    BAD_CHARS = (' ', '\n', '\r', '$', '<', '>', '{', '}', '[', ']', '(', ')', '*', '~', '^', ',', '\\')
+    BAD_CHARS = (' ', '\n', '\r', '$', '<', '>', '{', '}', '[', ']', '(', ')', '*', '~', '^', '@', ',', '\\')
 
     SECTIONS = open('utils/sections.txt').read().splitlines()
     IGNORE_LIST = open('utils/ignorelist.txt', errors='ignore').read().splitlines()
@@ -40,11 +40,23 @@ class Analysis:
     
     def __add_path(self, path, paths):
         if 'assets' in path.lower():
-            self.__add_to_dict('Assets', path, paths)
+            self.__add_to_dict('Assets', path, paths)  
+        elif 'cloudfront' in path.lower():
+            self.__add_to_dict('Cloudfront', path, paths)
+        elif 'amazonaws' in path.lower():
+            self.__add_to_dict('AWS', path, paths)
+        elif 'github' in path.lower():
+            self.__add_to_dict('Github', path, paths)
+        elif 'blob.core.windows' in path.lower():
+            self.__add_to_dict('Azure Containers', path, paths)
+        elif '.json' in path.lower():
+            self.__add_to_dict('JSON Files', path, paths)
         elif '.js' in path.lower():
             self.__add_to_dict('JS Files', path, paths)
         elif '.ts' in path.lower():
             self.__add_to_dict('TS Files', path, paths)
+        elif '.png' in path.lower() or '.jpg' in path.lower() or '.gif' in path.lower() or '.svg' in path.lower():
+            self.__add_to_dict('Images', path, paths)
         elif 'module' in path.lower():
             self.__add_to_dict('Modules', path, paths)
         elif 'api' in path.lower():
@@ -72,8 +84,6 @@ class Analysis:
                 # Add printing
                 pass
             else:
-                if e.startswith('/'):
-                    e = e.lstrip('/')
                 self.__add_path(e, paths)
             checked.append(e.lower())
         return paths
@@ -82,7 +92,7 @@ class Analysis:
         return not any(char in self.BAD_CHARS for char in s.strip())
 
     def __get_paths(self, js):
-        data = (
+        data = [
             entry.strip() for entry in js.split('"')
             if (
                 '/' in entry.strip()                           # Possible Path
@@ -91,7 +101,11 @@ class Analysis:
                 and self.__has_no_bad_char(entry.strip())      # Filter
                 and entry.strip() not in self.IGNORE_LIST      # Black List
             )
-        )
+        ]
+        if len(data):
+            print(f'{self.CYAN}Available Paths\n---------------{self.WHITE}')
+        else:
+            print(f'{self.YELLOW}The extraction process yielded no viable{self.WHITE} paths')
         return self.__extract_paths(data)
 
     def __pretty_entry(self, entry):
@@ -110,6 +124,7 @@ class Analysis:
         return mapped
 
     def __print_objects(self, objects, js):
+        extracted_objects = 0
         mapped_objects = self.__map_objects(objects)
         for section in mapped_objects.keys():
             if mapped_objects[section]:
@@ -118,7 +133,13 @@ class Analysis:
                 print('-' * (len(title) - 14), self.WHITE)
                 for o in mapped_objects[section]:
                     print(f'{self.YELLOW}{self.__pretty_entry(o)}{self.WHITE}\n')
-        print(f'{self.CYAN}Available Paths\n---------------{self.WHITE}')
+                    extracted_objects += 1
+        
+        # Warn - no useful data was found.
+        if not extracted_objects:
+            print(f'\n{self.YELLOW}The extraction process yielded no viable{self.WHITE} objects\n')
+        
+        # Look for paths.
         self.__print_paths(js)
 
     def __print_paths(self, js):
@@ -127,14 +148,26 @@ class Analysis:
             for path in sorted(paths):
                 print(f'{self.GREEN}{path}{self.WHITE}')
             print()
+    
+    def __parse_js(self, js_file):
+        print('Fetch JS File')
+        js = self._get_page_source(js_file).text
+        print(f'Parse JS Code')
+        objects = re.findall(self.REG_O, js) + re.findall(self.REG_L, js)
+        self.__print_objects(set(objects), js)
+    
+    def __parse_all_js_files(self):
+        for js_file in self.__get_js_urls(self.base):
+            print(f'\n{self.DARKCYAN}NEXT{self.WHITE} {js_file}')
+            to_parse_it = input('\nTo parse this file? n/Y: ')
+            if not to_parse_it or to_parse_it.strip().lower() in ('y', 'yes'):
+                self.__parse_js(js_file)
 
     def analyze(self):
         main_js = self.__find_mainjs(self.base)
         if main_js:
-            print('Fetch JS File')
-            js = self._get_page_source(main_js).text
-            print(f'Parse JS Code')
-            objects = re.findall(self.REG_O, js) + re.findall(self.REG_L, js)
-            self.__print_objects(set(objects), js)
-        else:
-            print(f"{self.RED}{MAINJS_NOT_FOUND}{self.WHITE}")
+            return self.__parse_js(main_js)
+        print(f"{self.RED}{MAINJS_NOT_FOUND}{self.WHITE}")
+        parse_all = input('Would you like to parse all JS files found? N/y: ')
+        if parse_all.strip().lower() in ('y', 'yes'):
+            self.__parse_all_js_files()
