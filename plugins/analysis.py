@@ -7,10 +7,13 @@ from utils.strings import MAINJS_NOT_FOUND
 
 class Analysis:
 
-    REG_O = r'(?:[\"]?[a-zA-Z0-9_\-]*[\"]?[:=]\{(?:[\"]?[a-zA-Z0-9_-]*[\"]?:[\"]?[a-zA-Z0-9_\-/\\]*[\"]?(?:\,)?)+\})'
-    REG_L = r'(?:[\"]?[a-zA-Z0-9_\-]*[\"]?[:=]\[(?:[\"]?[a-zA-Z0-9_-]*[\"](?:\,)?)+\])'
+    BAD_CHARS = (' ', '\n', '\r', '$', '<', '>', '{', '}', '[', ']', '(', ')', '*', '~', '^', ',', '\\')
 
     SECTIONS = open('utils/sections.txt').read().splitlines()
+    IGNORE_LIST = open('utils/ignorelist.txt', errors='ignore').read().splitlines()
+
+    REG_O = r'(?:[\"]?[a-zA-Z0-9_\-]*[\"]?[:=]\{(?:[\"]?[a-zA-Z0-9_-]*[\"]?:[\"]?[a-zA-Z0-9_\-/\\]*[\"]?(?:\,)?)+\})'
+    REG_L = r'(?:[\"]?[a-zA-Z0-9_\-]*[\"]?[:=]\[(?:[\"]?[a-zA-Z0-9_-]*[\"](?:\,)?)+\])'
 
     def __get_js_urls(self, url):
         http = self._get_page_source(url).text
@@ -34,82 +37,103 @@ class Analysis:
             if v not in dic[k]:
                 dic[k].append(v)
         return dic
+    
+    def __add_path(self, path, paths):
+        if 'assets' in path.lower():
+            self.__add_to_dict('Assets', path, paths)
+        elif '.js' in path.lower():
+            self.__add_to_dict('JS Files', path, paths)
+        elif '.ts' in path.lower():
+            self.__add_to_dict('TS Files', path, paths)
+        elif 'module' in path.lower():
+            self.__add_to_dict('Modules', path, paths)
+        elif 'api' in path.lower():
+            self.__add_to_dict('API Paths', path, paths)
+        elif 'login' in path.lower():
+            self.__add_to_dict('Auth Paths', path, paths)
+        elif 'register' in path.lower():
+            self.__add_to_dict('Auth Paths', path, paths)
+        elif 'user' in path.lower():
+            self.__add_to_dict('User Paths', path, paths)
+        elif 'admin' in path.lower():
+            self.__add_to_dict('Admin Paths', path, paths)
+        elif 'role' in path.lower():
+            self.__add_to_dict('Role Paths', path, paths)
+        else:
+            self.__add_to_dict('Not Classified', path, paths)
 
-    def __extract_pathes(self, data):
-        pathes = {}
+    def __extract_paths(self, data):
+        paths = {}
         checked = []
         for e in data:
+            e = e.strip()
             if e.lower() in checked:
                 # TODO
                 # Add printing
                 pass
-            elif e.startswith('/') and e[1].isalnum():
-                if 'api' in e.lower():
-                    self.__add_to_dict('API Paths', e, pathes)
-                elif 'login' in e.lower():
-                    self.__add_to_dict('Auth Paths', e, pathes)
-                elif 'register' in e.lower():
-                    self.__add_to_dict('Auth Paths', e, pathes)
-                elif 'user' in e.lower():
-                    self.__add_to_dict('User Paths', e, pathes)
-                elif 'admin' in e.lower():
-                    self.__add_to_dict('Admin Paths', e, pathes)
-                elif 'role' in e.lower():
-                    self.__add_to_dict('Role Paths', e, pathes)
-                else:
-                    self.__add_to_dict('Other Paths', e, pathes)
-            elif '/' in e and len(e) < 100:
-                if e[:3].lower() == 'api':
-                    self.__add_to_dict('API Paths', e, pathes)
-                else:
-                    self.__add_to_dict('Possible Paths', e, pathes)
+            else:
+                if e.startswith('/'):
+                    e = e.lstrip('/')
+                self.__add_path(e, paths)
             checked.append(e.lower())
-        return pathes
+        return paths
+    
+    def __has_no_bad_char(self, s: str):
+        return not any(char in self.BAD_CHARS for char in s.strip())
 
-    def __get_pathes(self, js):
+    def __get_paths(self, js):
         data = (
-            entry for entry in js.split('"')
+            entry.strip() for entry in js.split('"')
             if (
-                len(entry) > 1 and not any(
-                    char in [' ', '\n', '$', '<', '>', '*', '(', ')', '\\'] for char in entry)
+                '/' in entry.strip()                           # Possible Path
+                and len(entry.strip()) > 2                     # Min Length
+                and len(entry.strip()) < 100                   # Max Length
+                and self.__has_no_bad_char(entry.strip())      # Filter
+                and entry.strip() not in self.IGNORE_LIST      # Black List
             )
         )
-        return self.__extract_pathes(data)
+        return self.__extract_paths(data)
 
     def __pretty_entry(self, entry):
-        return entry.replace("{", "\n\t").replace("[", "\n\t").replace(", ", "\n\t") \
-            .replace(",", "\n\t").replace("}", "").replace("]", "") \
+        return entry.replace("{", "\n").replace("[", "\n").replace(", ", "\n") \
+            .replace(",", "\n").replace("}", "").replace("]", "") \
             .replace("=\n", f'{self.GREEN}\n').replace(":\n", f'{self.GREEN}\n') \
             .replace('"', '').replace("'", "")
 
-    def __print_objects(self, objects, js):
-        printed = []
-        for section in self.SECTIONS:
-            print(f'{self.CYAN}\n # {section}{self.WHITE}')
-            count = 0
-            for o in objects:
-                if section.lower() in o.lower() and o not in printed:
-                    print(f'{self.YELLOW} > {self.__pretty_entry(o)}{self.WHITE}')
-                    count += 1
-                    printed.append(o)
-            if section == 'Path':
-                count = self.__print_pathes(js, count)
-            if not count:
-                print(f'{self.RED} > No Relevant Data{self.WHITE}')
+    def __map_objects(self, objects):
+        mapped = {k:[] for k in self.SECTIONS}
+        for o in objects:
+            for section in self.SECTIONS:
+                if section.lower() in o.lower() and o not in mapped[section]:
+                    mapped[section].append(o)
+                    break
+        return mapped
 
-    def __print_pathes(self, js, count=0):
-        for k, v in self.__get_pathes(js).items():
-            o = f'{str(k)}:{str(v)}'
-            print(f'{self.YELLOW} > {self.__pretty_entry(o)}{self.WHITE}')
-            count += 1
-        return count
+    def __print_objects(self, objects, js):
+        mapped_objects = self.__map_objects(objects)
+        for section in mapped_objects.keys():
+            if mapped_objects[section]:
+                title = f'{self.CYAN}Keyword: {self.WHITE}{section}{self.CYAN} (Total objects: {len(mapped_objects[section])})'
+                print(f'\n{title}')
+                print('-' * (len(title) - 14), self.WHITE)
+                for o in mapped_objects[section]:
+                    print(f'{self.YELLOW}{self.__pretty_entry(o)}{self.WHITE}\n')
+        print(f'{self.CYAN}Available Paths\n---------------{self.WHITE}')
+        self.__print_paths(js)
+
+    def __print_paths(self, js):
+        for k, paths in self.__get_paths(js).items():
+            print(f'{self.YELLOW}{k} {self.WHITE}(Total paths: {len(paths)})')
+            for path in sorted(paths):
+                print(f'{self.GREEN}{path}{self.WHITE}')
+            print()
 
     def analyze(self):
         main_js = self.__find_mainjs(self.base)
         if main_js:
-            print(f'{self.CYAN} Fetch JS File{self.WHITE}')
+            print('Fetch JS File')
             js = self._get_page_source(main_js).text
-            print(f'{self.CYAN} Parse JS Code{self.WHITE}')
+            print(f'Parse JS Code')
             objects = re.findall(self.REG_O, js) + re.findall(self.REG_L, js)
             self.__print_objects(set(objects), js)
         else:

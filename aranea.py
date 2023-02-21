@@ -46,12 +46,10 @@ if __name__ == '__main__':
     strict = args.strict
 
     banner = f'''
- URL     :: {url}
- Mode    :: {mode}
- '''
-
-    if mode == 'crawl':
-        banner += f'Threads :: {threads}\n'
+URL      :: {url}
+Mode     :: {mode}
+Threads  :: {threads}
+'''
 
     print(strings.SOLID)
     print(strings.INTRO)

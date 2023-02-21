@@ -1,11 +1,10 @@
-Settings
-Config
-Secret
 Token
-Admin
 Role
 User
+Admin
 Customer
 Password
 API
-Path
+Config
+Secret
+Settings
