@@ -39,6 +39,9 @@ class Analysis:
         return dic
     
     def __add_path(self, path, paths):
+        # Modify the order based on your needs.
+
+        # Standard keywords.
         if 'assets' in path.lower():
             self.__add_to_dict('Assets', path, paths)  
         elif 'cloudfront' in path.lower():
@@ -49,21 +52,23 @@ class Analysis:
             self.__add_to_dict('Github', path, paths)
         elif 'blob.core.windows' in path.lower():
             self.__add_to_dict('Azure Containers', path, paths)
+        elif 'firebase' in path.lower():
+            self.__add_to_dict('Firebase', path, paths)
         elif '.json' in path.lower():
             self.__add_to_dict('JSON Files', path, paths)
         elif '.js' in path.lower():
             self.__add_to_dict('JS Files', path, paths)
         elif '.ts' in path.lower():
             self.__add_to_dict('TS Files', path, paths)
-        elif '.png' in path.lower() or '.jpg' in path.lower() or '.gif' in path.lower() or '.svg' in path.lower():
+        elif any(kw in path.lower() for kw in ('.png', '.jpg', '.gif', '.svg')):
             self.__add_to_dict('Images', path, paths)
         elif 'module' in path.lower():
             self.__add_to_dict('Modules', path, paths)
+        
+        # Additional keywords.
         elif 'api' in path.lower():
             self.__add_to_dict('API Paths', path, paths)
-        elif 'login' in path.lower():
-            self.__add_to_dict('Auth Paths', path, paths)
-        elif 'register' in path.lower():
+        elif any(kw in path.lower() for kw in ('login', 'register')):
             self.__add_to_dict('Auth Paths', path, paths)
         elif 'user' in path.lower():
             self.__add_to_dict('User Paths', path, paths)
@@ -84,8 +89,8 @@ class Analysis:
                 # Add printing
                 pass
             else:
+                checked.append(e.lower())
                 self.__add_path(e, paths)
-            checked.append(e.lower())
         return paths
     
     def __has_no_bad_char(self, s: str):
@@ -93,7 +98,7 @@ class Analysis:
 
     def __get_paths(self, js):
         data = [
-            entry.strip() for entry in js.split('"')
+            entry.strip() for entry in set(js.split('"'))
             if (
                 '/' in entry.strip()                           # Possible Path
                 and len(entry.strip()) > 2                     # Min Length
@@ -105,7 +110,7 @@ class Analysis:
         if len(data):
             print(f'{self.CYAN}Available Paths\n---------------{self.WHITE}')
         else:
-            print(f'{self.YELLOW}The extraction process yielded no viable{self.WHITE} paths')
+            print(f'The extraction process yielded no viable {self.ORANGE}paths{self.WHITE}')
         return self.__extract_paths(data)
 
     def __pretty_entry(self, entry):
@@ -137,7 +142,7 @@ class Analysis:
         
         # Warn - no useful data was found.
         if not extracted_objects:
-            print(f'\n{self.YELLOW}The extraction process yielded no viable{self.WHITE} objects\n')
+            print(f'\nThe extraction process yielded no viable {self.ORANGE}objects{self.WHITE}\n')
         
         # Look for paths.
         self.__print_paths(js)
@@ -150,9 +155,8 @@ class Analysis:
             print()
     
     def __parse_js(self, js_file):
-        print('Fetch JS File')
+        print(f'Fetching {self.CYAN}{js_file}{self.WHITE}')
         js = self._get_page_source(js_file).text
-        print(f'Parse JS Code')
         objects = re.findall(self.REG_O, js) + re.findall(self.REG_L, js)
         self.__print_objects(set(objects), js)
     
