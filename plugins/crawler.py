@@ -31,6 +31,11 @@ class Crawler:
     EMAIL_REG = r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)"
 
     LOCK = Lock()
+    LOGGED_URLS = {}
+
+    def _normalize_url(self, url):
+        # Remove fragment (everything after and including '#')
+        return url.split('#', 1)[0]
 
     def __get_a_hrefs(self, url, soup):
         for a in soup.find_all('a'):
@@ -70,6 +75,7 @@ class Crawler:
                 yield self._process_path(url, path)
 
     def __process_url(self, url):
+        url = self._normalize_url(url)
         # Add to list of parametrized urls for future injection tests.
         self.__write_parametrized(url)
 
@@ -90,17 +96,19 @@ class Crawler:
 
         # Tag <script>
         for url in self.__get_script_sources(url, soup):
-            if url not in self.URLS['visited']:
-                self.URLS['visited'].add(url)
-                self.__write_script(url)
+            norm_url = self._normalize_url(url)
+            if norm_url not in self.URLS['visited']:
+                self.URLS['visited'].add(norm_url)
+                self.__write_script(norm_url)
 
         # Tag <form>
         for url in self.__get_form_actions(url, soup):
+            norm_url = self._normalize_url(url)
             if (
-                url not in self.URLS['visited']
-                    and url not in self.URLS['not_visited']):
-                self.__print(f'{self.DARKCYAN}F-ACTION :: {url}{self.WHITE}')
-                self._add_not_visited(url)
+                norm_url not in self.URLS['visited']
+                    and norm_url not in self.URLS['not_visited']):
+                self.__print(f'{self.DARKCYAN}F-ACTION :: {norm_url}{self.WHITE}')
+                self._add_not_visited(norm_url)
 
         # Extract Emails
         self.__reg_extract_emails(html)
@@ -113,8 +121,14 @@ class Crawler:
         return self.DIRS['general']
 
     def __write(self, url, directory):
-        url = unquote(url)
+        url = self._normalize_url(unquote(url))
         directory = unquote(directory)
+        # Per-log-file deduplication
+        if directory not in self.LOGGED_URLS:
+            self.LOGGED_URLS[directory] = set()
+        if url in self.LOGGED_URLS[directory]:
+            return
+        self.LOGGED_URLS[directory].add(url)
         filepath = Path(f'scans/{self.domain[0]}/{directory}.txt')
         filepath.parent.mkdir(parents=True, exist_ok=True)
         with open(filepath, 'a+', encoding='utf-8', errors='ignore') as f:
