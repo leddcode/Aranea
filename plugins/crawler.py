@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import re
 from threading import Lock
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 
 from bs4 import BeautifulSoup as bs
 from requests import ConnectionError
@@ -113,6 +113,8 @@ class Crawler:
         return self.DIRS['general']
 
     def __write(self, url, directory):
+        url = unquote(url)
+        directory = unquote(directory)
         filepath = Path(f'scans/{self.domain[0]}/{directory}.txt')
         filepath.parent.mkdir(parents=True, exist_ok=True)
         with open(filepath, 'a+', encoding='utf-8', errors='ignore') as f:
