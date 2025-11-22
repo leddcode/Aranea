@@ -21,11 +21,13 @@ pip3 install -r requirements.txt
 ## Usage
 
 ```sh
-usage: aranea.py [-h] -u URL -m MODE [-t THREADS] [--headers HEADERS] [-s] [--mainonly]
+usage: aranea.py [-h] (-u URL | -ul URLLIST) -m MODE [-t THREADS] [--headers HEADERS] [-s] [--mainonly]
 
 optional arguments:
   -h, --help            show this help message and exit
   -u URL, --url URL     Target URL
+  -ul URLLIST, --urllist URLLIST
+                        Path to file containing list of URLs (one per line)
   -m MODE, --mode MODE  Available Modes: crawl, analysis
   -t THREADS, --threads THREADS
                         Default configuration: 10 threads
@@ -110,10 +112,32 @@ Include authentication or custom headers:
 
 ```sh
 python3 aranea.py -u https://example.com -m analysis --headers "Authorization:Bearer token123,Cookie:session=abc"
+```
 
+### Using URL Lists
+
+Process multiple URLs from a file (one URL per line, lines starting with `#` are ignored):
+
+**Create a file `urls.txt`:**
+```
+https://example.com
+https://another-site.com
+https://third-site.com
+# This is a comment and will be ignored
+```
+
+**Run analysis on all URLs:**
+```sh
+python3 aranea.py -ul urls.txt -m analysis
+```
+
+**Run crawl on all URLs:**
+```sh
+python3 aranea.py -ul urls.txt -m crawl -t 50
+```
 ## Contributing
 
-1. Fork it (<https://github.com/enotr0n/Aranea>)
+1. Fork it (<https://github.com/leddcode/Aranea>)
 2. Create your feature branch (`git checkout -b feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin feature`)

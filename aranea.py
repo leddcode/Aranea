@@ -17,8 +17,11 @@ class Aranea(Base, Colour, Analysis, Crawler):
     @staticmethod
     def parse_args():
         parser = argparse.ArgumentParser()
-        parser.add_argument(
-            '-u', '--url', help="Target URL", required=True)
+        url_group = parser.add_mutually_exclusive_group(required=True)
+        url_group.add_argument(
+            '-u', '--url', help="Target URL")
+        url_group.add_argument(
+            '-ul', '--urllist', help="Path to file containing list of URLs (one per line)")
         parser.add_argument(
             '-m', '--mode',
             help="Available Modes: crawl, analysis",
@@ -40,36 +43,68 @@ class Aranea(Base, Colour, Analysis, Crawler):
             action='store_true')
         return parser.parse_args()
 
+    @staticmethod
+    def run_on_url(url, mode, threads, headers, strict, mainonly):
+        """Run the specified mode on a single URL"""
+        try:
+            if 'analysis' in mode:
+                Aranea(url, threads, headers, strict, mainonly).analyze()
+            elif 'crawl' in mode:
+                Aranea(url, threads, headers, strict, mainonly).crawl()
+            else:
+                print(
+                    f'{Aranea.RED} The mode "{mode}" does not exist!{Aranea.WHITE}')
+        except ConnectionError:
+            print(f'{Aranea.RED} Connection Error: Please check the URL address and try again - {url}{Aranea.WHITE}')
+        except Exception as e:
+            print(f'{Aranea.RED}Error processing {url}: {e}{Aranea.WHITE}')
+
 
 if __name__ == '__main__':
     args = Aranea.parse_args()
-    url = args.url.strip()
     threads = int(args.threads)
     headers = args.headers.strip()
     mode = args.mode.strip()
     strict = args.strict
     mainonly = args.mainonly
 
-    banner = f'''
+    # Collect URLs from either single URL or URL list file
+    urls = []
+    if args.url:
+        urls = [args.url.strip()]
+    elif args.urllist:
+        try:
+            with open(args.urllist, 'r') as f:
+                urls = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
+        except FileNotFoundError:
+            print(f'{Aranea.RED}Error: URL list file not found: {args.urllist}{Aranea.WHITE}')
+            exit(1)
+        except Exception as e:
+            print(f'{Aranea.RED}Error reading URL list file: {e}{Aranea.WHITE}')
+            exit(1)
+
+    if not urls:
+        print(f'{Aranea.RED}Error: No URLs found to process{Aranea.WHITE}')
+        exit(1)
+
+    # Display banner
+    print(strings.SOLID)
+    print(strings.INTRO)
+    print(strings.SOLID)
+    
+    # Process each URL
+    total_urls = len(urls)
+    for idx, url in enumerate(urls, 1):
+        if total_urls > 1:
+            print(f'\n{Aranea.CYAN}{"=" * 60}{Aranea.WHITE}')
+            print(f'{Aranea.CYAN}Processing URL {idx} of {total_urls}{Aranea.WHITE}')
+            print(f'{Aranea.CYAN}{"=" * 60}{Aranea.WHITE}\n')
+        
+        banner = f'''
 URL      :: {url}
 Mode     :: {mode}
 Threads  :: {threads}
 '''
-
-    print(strings.SOLID)
-    print(strings.INTRO)
-    print(strings.SOLID)
-    print(banner)
-
-    try:
-        if 'analysis' in mode:
-            Aranea(url, threads, headers, strict, mainonly).analyze()
-        elif 'crawl' in mode:
-            Aranea(url, threads, headers, strict, mainonly).crawl()
-        else:
-            print(
-                f'{Aranea.RED} The mode "{mode}" does not exist!{Aranea.WHITE}')
-    except ConnectionError:
-        print(f'{Aranea.RED} Connection Error: Please check the URL address and try again - {url}{Aranea.WHITE}')
-    except Exception as e:
-        print(e)
+        print(banner)
+        
+        Aranea.run_on_url(url, mode, threads, headers, strict, mainonly)
