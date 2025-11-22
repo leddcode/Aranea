@@ -162,16 +162,15 @@ class Analysis:
     
     def __parse_all_js_files(self):
         for js_file in self.__get_js_urls(self.base):
+            if self.mainonly and 'main' not in js_file:
+                continue
             print(f'\n{self.DARKCYAN}NEXT{self.WHITE} {js_file}')
-            to_parse_it = input('\nTo parse this file? n/Y: ')
-            if not to_parse_it or to_parse_it.strip().lower() in ('y', 'yes'):
+            to_parse_it = input('\nParse this file? y/N: ')
+            if to_parse_it.strip().lower() in ('y', 'yes'):
                 self.__parse_js(js_file)
 
     def analyze(self):
-        main_js = self.__find_mainjs(self.base)
-        if main_js:
-            return self.__parse_js(main_js)
-        print(f"{self.RED}{MAINJS_NOT_FOUND}{self.WHITE}")
-        parse_all = input('Would you like to parse all JS files found? N/y: ')
-        if parse_all.strip().lower() in ('y', 'yes'):
+        if '.js' in self.base or self.strict:
+            self.__parse_js(self.base)
+        else:
             self.__parse_all_js_files()

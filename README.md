@@ -21,46 +21,95 @@ pip3 install -r requirements.txt
 ## Usage
 
 ```sh
-usage: aranea.py [-h] -U URL -M MODE [-T THREADS] [-H HEADERS] [-S]
+usage: aranea.py [-h] -u URL -m MODE [-t THREADS] [--headers HEADERS] [-s] [--mainonly]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -U URL, --url URL     Target URL
-  -M MODE, --mode MODE  Available Modes: crawl, analysis
-  -T THREADS, --threads THREADS
+  -u URL, --url URL     Target URL
+  -m MODE, --mode MODE  Available Modes: crawl, analysis
+  -t THREADS, --threads THREADS
                         Default configuration: 10 threads
-  -H HEADERS, --headers HEADERS
-                        Should be a string as in the example:
+  --headers HEADERS     Should be a string as in the example:
                         "Authorization:Bearer ey..,Cookie:role=admin;"
-  -S, --strict          For analysis mode: the URL will be parsed even if it
+  -s, --strict          For analysis mode: the URL will be parsed even if it
                         does not have a JS extension.
+  --mainonly            For analysis mode: only the main.js file will be parsed.
 ```
 
-## Example
+## Modes
 
-Crawling (all results are stored in the scans directory).
+### Crawl Mode
+
+Crawls the target URL and discovers internal/external links. All results are stored in the `scans` directory.
+
+### Analysis Mode
+
+Analyzes JavaScript files to extract:
+- API endpoints and paths
+- Configuration objects
+- Authentication-related paths
+- User-related endpoints
+- Token-related data
+- Other potentially sensitive information
+
+**How it works:**
+1. If you provide a direct `.js` URL, it analyzes that file immediately
+2. If you provide a webpage URL, it discovers all JS files on the page
+3. For each discovered JS file, you'll be prompted: `Parse this file? y/N:`
+   - Press Enter or type `n` to skip (default)
+   - Type `y` or `yes` to analyze the file
+4. Use `--mainonly` flag to filter only files containing "main" in their name
+
+## Examples
+
+### Crawling
+
+Crawl a website with 100 threads (results stored in the `scans` directory):
 
 ```sh
-python3 aranea.py -U https://example.com -M crawl -T 100
+python3 aranea.py -u https://example.com -m crawl -t 100
 ```
 
-Using analysis mode, locate and parse the file Main.js.
+### Analysis Mode - Interactive Parsing
+
+Analyze a webpage and interactively choose which JS files to parse:
 
 ```sh
-python3 aranea.py -U https://example.com -M analysis
+python3 aranea.py -u https://example.com -m analysis
 ```
 
-In case Main.js was not found or if you want to analyze another JS file, specify its address in the URL parameter.
+This will discover all JS files and prompt you for each one. Press Enter to skip or type `y` to analyze.
+
+### Analysis Mode - Main Files Only
+
+Filter to only main.js files before prompting:
 
 ```sh
-python3 aranea.py -U https://example.com/script.js -M analysis
+python3 aranea.py -u https://example.com -m analysis --mainonly
 ```
 
-Use the -S flag if the JS file does not have a .js extension.
+### Analysis Mode - Direct JS File
+
+Analyze a specific JavaScript file directly:
 
 ```sh
-python3 aranea.py -U https://example.com/script -M analysis -S
+python3 aranea.py -u https://example.com/static/bundle.js -m analysis
 ```
+
+### Analysis Mode - Non-.js Extension
+
+Use the `-s` flag if the JS file doesn't have a `.js` extension:
+
+```sh
+python3 aranea.py -u https://example.com/script -m analysis -s
+```
+
+### Analysis with Custom Headers
+
+Include authentication or custom headers:
+
+```sh
+python3 aranea.py -u https://example.com -m analysis --headers "Authorization:Bearer token123,Cookie:session=abc"
 
 ## Contributing
 

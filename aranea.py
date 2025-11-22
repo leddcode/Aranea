@@ -11,28 +11,32 @@ from utils import strings
 
 class Aranea(Base, Colour, Analysis, Crawler):
 
-    def __init__(self, url, threads, headers, strict):
-        super().__init__(url, threads, headers, strict)
+    def __init__(self, url, threads, headers, strict, mainonly=False):
+        super().__init__(url, threads, headers, strict, mainonly)
 
     @staticmethod
     def parse_args():
         parser = argparse.ArgumentParser()
         parser.add_argument(
-            '-U', '--url', help="Target URL", required=True)
+            '-u', '--url', help="Target URL", required=True)
         parser.add_argument(
-            '-M', '--mode',
+            '-m', '--mode',
             help="Available Modes: crawl, analysis",
             required=True)
         parser.add_argument(
-            '-T', '--threads',
+            '-t', '--threads',
             help="Default configuration: 10 threads", default=10)
         parser.add_argument(
-            '-H', '--headers',
+            '--headers',
             help='Should be a string as in the example: "Authorization:Bearer ey..,Cookie:role=admin;"',
             default='')
         parser.add_argument(
-            '-S', '--strict',
+            '-s', '--strict',
             help="For analysis mode: the URL will be parsed even if it does not have a JS extension.",
+            action='store_true')
+        parser.add_argument(
+            '--mainonly',
+            help="For analysis mode: only the main.js file will be parsed.",
             action='store_true')
         return parser.parse_args()
 
@@ -44,6 +48,7 @@ if __name__ == '__main__':
     headers = args.headers.strip()
     mode = args.mode.strip()
     strict = args.strict
+    mainonly = args.mainonly
 
     banner = f'''
 URL      :: {url}
@@ -58,9 +63,9 @@ Threads  :: {threads}
 
     try:
         if 'analysis' in mode:
-            Aranea(url, threads, headers, strict).analyze()
+            Aranea(url, threads, headers, strict, mainonly).analyze()
         elif 'crawl' in mode:
-            Aranea(url, threads, headers, strict).crawl()
+            Aranea(url, threads, headers, strict, mainonly).crawl()
         else:
             print(
                 f'{Aranea.RED} The mode "{mode}" does not exist!{Aranea.WHITE}')

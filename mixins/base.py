@@ -15,12 +15,13 @@ class Base:
         'not_visited': deque([])
     }
 
-    def __init__(self, url, threads, headers, strict):
+    def __init__(self, url, threads, headers, strict, mainonly=False):
         self.base = url
         self.threads = threads
         self.headers = self.__get_headers(headers)
         self.domain = self.__get_domain(url)
         self.strict = strict
+        self.mainonly = mainonly
         self._add_not_visited(url)
 
     def __get_domain(self, url):
