@@ -11,8 +11,8 @@ from utils import strings
 
 class Aranea(Base, Colour, Analysis, Crawler):
 
-    def __init__(self, url, threads, headers, strict, mainonly=False):
-        super().__init__(url, threads, headers, strict, mainonly)
+    def __init__(self, url, threads, headers, strict, mainonly=False, continuous=False):
+        super().__init__(url, threads, headers, strict, mainonly, continuous)
 
     @staticmethod
     def parse_args():
@@ -41,16 +41,20 @@ class Aranea(Base, Colour, Analysis, Crawler):
             '--mainonly',
             help="For analysis mode: only the main.js file will be parsed.",
             action='store_true')
+        parser.add_argument(
+            '-c', '--continuous',
+            help="For analysis mode: recursively parse found JS files.",
+            action='store_true')
         return parser.parse_args()
 
     @staticmethod
-    def run_on_url(url, mode, threads, headers, strict, mainonly):
+    def run_on_url(url, mode, threads, headers, strict, mainonly, continuous):
         """Run the specified mode on a single URL"""
         try:
             if mode in ('analysis', 'a'):
-                Aranea(url, threads, headers, strict, mainonly).analyze()
+                Aranea(url, threads, headers, strict, mainonly, continuous).analyze()
             elif mode in ('crawl', 'c'):
-                Aranea(url, threads, headers, strict, mainonly).crawl()
+                Aranea(url, threads, headers, strict, mainonly, continuous).crawl()
             else:
                 print(
                     f'{Aranea.RED} The mode "{mode}" does not exist!{Aranea.WHITE}')
@@ -67,6 +71,7 @@ if __name__ == '__main__':
     mode = args.mode.strip()
     strict = args.strict
     mainonly = args.mainonly
+    continuous = args.continuous
 
     # Collect URLs from either single URL or URL list file
     urls = []
@@ -107,4 +112,4 @@ Threads  :: {threads}
 '''
         print(banner)
         
-        Aranea.run_on_url(url, mode, threads, headers, strict, mainonly)
+        Aranea.run_on_url(url, mode, threads, headers, strict, mainonly, continuous)

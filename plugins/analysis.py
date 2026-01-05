@@ -145,29 +145,65 @@ class Analysis:
             print(f'\nThe extraction process yielded no viable {self.ORANGE}objects{self.WHITE}\n')
         
         # Look for paths.
-        self.__print_paths(js)
+        return self.__print_paths(js)
 
     def __print_paths(self, js):
-        for k, paths in self.__get_paths(js).items():
+        paths_dict = self.__get_paths(js)
+        for k, paths in paths_dict.items():
             print(f'{self.YELLOW}{k} {self.WHITE}(Total paths: {len(paths)})')
             for path in sorted(paths):
                 print(f'{self.GREEN}{path}{self.WHITE}')
             print()
+        return paths_dict
     
     def __parse_js(self, js_file):
         print(f'Fetching {self.CYAN}{js_file}{self.WHITE}')
         js = self._get_page_source(js_file).text
         objects = re.findall(self.REG_O, js) + re.findall(self.REG_L, js)
-        self.__print_objects(set(objects), js)
+        return self.__print_objects(set(objects), js)
     
     def __parse_all_js_files(self):
+        js_queue = []
+        visited = set()
+
+        # Initial population
         for js_file in self.__get_js_urls(self.base):
+             if js_file not in visited:
+                js_queue.append(js_file)
+
+        while js_queue:
+            js_file = js_queue.pop(0)
+            
             if self.mainonly and 'main' not in js_file:
                 continue
-            print(f'\n{self.DARKCYAN}NEXT{self.WHITE} {js_file}')
+            
+            if js_file in visited:
+                continue
+                
+            visited.add(js_file)
+
+            print(f'\n{self.DARKCYAN}NEXT{self.WHITE} {js_file} {self.YELLOW}({len(js_queue)} left){self.WHITE}')
             to_parse_it = input('\nParse this file? y/N: ')
             if to_parse_it.strip().lower() in ('y', 'yes'):
-                self.__parse_js(js_file)
+                paths_found = self.__parse_js(js_file)
+                
+                if self.continuous and paths_found:
+                    # Check for new JS files
+                    js_files = paths_found.get('JS Files', [])
+                    new_candidates = []
+                    
+                    for raw_path in js_files:
+                        # Smart resolve
+                        full_path = self._process_path(js_file, raw_path)
+                        
+                        if full_path not in visited and full_path not in js_queue:
+                             new_candidates.append(full_path)
+                    
+                    if new_candidates:
+                        print(f'{self.CYAN}Continuous Mode: Found {len(new_candidates)} new JS candidate(s).{self.WHITE}')
+                        for full_path in new_candidates:
+                             js_queue.append(full_path)
+                             print(f'{self.GREEN} + Added to queue: {full_path}{self.WHITE}')
 
     def analyze(self):
         if '.js' in self.base or self.strict:
