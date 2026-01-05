@@ -28,7 +28,7 @@ optional arguments:
   -u URL, --url URL     Target URL
   -ul URLLIST, --urllist URLLIST
                         Path to file containing list of URLs (one per line)
-  -m MODE, --mode MODE  Available Modes: crawl, analysis
+  -m MODE, --mode MODE  Available Modes: crawl (or c), analysis (or a)
   -t THREADS, --threads THREADS
                         Default configuration: 10 threads
   --headers HEADERS     Should be a string as in the example:
@@ -36,6 +36,7 @@ optional arguments:
   -s, --strict          For analysis mode: the URL will be parsed even if it
                         does not have a JS extension.
   --mainonly            For analysis mode: only the main.js file will be parsed.
+  -c, --continuous      For analysis mode: recursively parse found JS files.
 ```
 
 ## Modes
@@ -61,6 +62,15 @@ Analyzes JavaScript files to extract:
    - Press Enter or type `n` to skip (default)
    - Type `y` or `yes` to analyze the file
 4. Use `--mainonly` flag to filter only files containing "main" in their name
+5. Use `-c` or `--continuous` to recursively discover and queue new JS files found within analyzed scripts.
+
+### Continuous Mode
+When enabled with `-c`, Aranea becomes smarter:
+- It parses selected JS files for references to *other* JS files.
+- It automatically adds these new findings to the analysis queue.
+- It handles relative path resolution (`./app.js` -> `https://example.com/app.js`).
+- It tracks visited files to prevent infinite loops.
+- It notifies you of how many new files were found and how many are left in the queue.
 
 ## Examples
 
@@ -112,6 +122,23 @@ Include authentication or custom headers:
 
 ```sh
 python3 aranea.py -u https://example.com -m analysis --headers "Authorization:Bearer token123,Cookie:session=abc"
+```
+
+### Continuous Analysis
+
+Recursively find and analyze JS files referenced by other scripts:
+
+```sh
+python3 aranea.py -u https://example.com -m a -c
+```
+
+### Short Aliases
+
+You can use `a` for analysis and `c` for crawl:
+
+```sh
+python3 aranea.py -u https://example.com -m c
+python3 aranea.py -u https://example.com -m a
 ```
 
 ### Using URL Lists
