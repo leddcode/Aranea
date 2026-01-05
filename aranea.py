@@ -47,9 +47,9 @@ class Aranea(Base, Colour, Analysis, Crawler):
     def run_on_url(url, mode, threads, headers, strict, mainonly):
         """Run the specified mode on a single URL"""
         try:
-            if 'analysis' in mode:
+            if mode in ('analysis', 'a'):
                 Aranea(url, threads, headers, strict, mainonly).analyze()
-            elif 'crawl' in mode:
+            elif mode in ('crawl', 'c'):
                 Aranea(url, threads, headers, strict, mainonly).crawl()
             else:
                 print(

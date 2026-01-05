@@ -12,8 +12,8 @@ class Analysis:
     SECTIONS = open('utils/sections.txt').read().splitlines()
     IGNORE_LIST = open('utils/ignorelist.txt', errors='ignore').read().splitlines()
 
-    REG_O = r'(?:[\"]?[a-zA-Z0-9_\-]*[\"]?[:=]\{(?:[\"]?[a-zA-Z0-9_-]*[\"]?:[\"]?[a-zA-Z0-9_\-/\\]*[\"]?(?:\,)?)+\})'
-    REG_L = r'(?:[\"]?[a-zA-Z0-9_\-]*[\"]?[:=]\[(?:[\"]?[a-zA-Z0-9_-]*[\"](?:\,)?)+\])'
+    REG_O = r'(?:(?:\"[a-zA-Z0-9_\-]*\"|\'[a-zA-Z0-9_\-]*\'|[a-zA-Z0-9_\-]+)\s*[:=]\s*\{(?:(?:\"[a-zA-Z0-9_\-]*\"|\'[a-zA-Z0-9_\-]*\'|[a-zA-Z0-9_\-]+)\s*:\s*(?:(?:\"[a-zA-Z0-9_\-/\\]*\"|\'[a-zA-Z0-9_\-/\\]*\'|[a-zA-Z0-9_\-/\\]+))\s*(?:,)?\s*)+\})'
+    REG_L = r'(?:(?:\"[a-zA-Z0-9_\-]*\"|\'[a-zA-Z0-9_\-]*\'|[a-zA-Z0-9_\-]+)\s*[:=]\s*\[(?:(?:\"[a-zA-Z0-9_\-]*\"|\'[a-zA-Z0-9_\-]*\'|[a-zA-Z0-9_\-]+)\s*(?:,)?\s*)+\])'
 
     def __get_js_urls(self, url):
         http = self._get_page_source(url).text
