@@ -1,9 +1,18 @@
 import os
 import re
+import warnings
 
-from bs4 import BeautifulSoup as bs
+try:
+    from bs4 import BeautifulSoup as bs, MarkupResemblesLocatorWarning
+except ImportError:
+    from bs4 import BeautifulSoup as bs
+    # Fallback if MarkupResemblesLocatorWarning is not available in older versions
+    MarkupResemblesLocatorWarning = None
 
 from utils.strings import MAINJS_NOT_FOUND
+
+if MarkupResemblesLocatorWarning:
+    warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
 
 class Analysis:
