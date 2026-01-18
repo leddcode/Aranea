@@ -116,6 +116,14 @@ Use the `-s` flag if the JS file doesn't have a `.js` extension:
 python3 aranea.py -u https://example.com/script -m analysis -s
 ```
 
+### Analysis Mode - Local File
+
+Analyze a local JavaScript file by providing the file path instead of a URL:
+
+```sh
+python3 aranea.py -u ./path/to/local/script.js -m analysis
+```
+
 ### Analysis with Custom Headers
 
 Include authentication or custom headers:
