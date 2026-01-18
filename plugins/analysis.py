@@ -1,3 +1,4 @@
+import os
 import re
 
 from bs4 import BeautifulSoup as bs
@@ -158,7 +159,15 @@ class Analysis:
     
     def __parse_js(self, js_file):
         print(f'Fetching {self.CYAN}{js_file}{self.WHITE}')
-        js = self._get_page_source(js_file).text
+        
+        content = ""
+        if os.path.exists(js_file) and not js_file.startswith(('http:', 'https:')):
+             with open(js_file, 'r') as f:
+                 content = f.read()
+        else:
+             content = self._get_page_source(js_file).text
+
+        js = content
         objects = re.findall(self.REG_O, js) + re.findall(self.REG_L, js)
         return self.__print_objects(set(objects), js)
     
@@ -206,6 +215,10 @@ class Analysis:
                              print(f'{self.GREEN} + Added to queue: {full_path}{self.WHITE}')
 
     def analyze(self):
+        if not self.base.startswith(('http:', 'https:')) and os.path.exists(self.base):
+             self.__parse_js(self.base)
+             return
+
         if '.js' in self.base or self.strict:
             self.__parse_js(self.base)
         else:
