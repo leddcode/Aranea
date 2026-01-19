@@ -37,6 +37,8 @@ optional arguments:
                         does not have a JS extension.
   --mainonly            For analysis mode: only the main.js file will be parsed.
   -c, --continuous      For analysis mode: recursively parse found JS files.
+  -o OUTPUT, --output OUTPUT
+                        Output file to save analysis results (analysis mode only).
 ```
 
 ## Modes
@@ -138,6 +140,14 @@ Recursively find and analyze JS files referenced by other scripts:
 
 ```sh
 python3 aranea.py -u https://example.com -m a -c
+```
+
+### Saving Analysis Results
+
+Save the output of the analysis to a file (stripped of colors for readability):
+
+```sh
+python3 aranea.py -u https://example.com -m a -o results.txt
 ```
 
 ### Short Aliases
