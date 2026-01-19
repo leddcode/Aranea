@@ -37,6 +37,7 @@ class Analysis:
     REG_DOM_SINK = r'innerHTML|outerHTML|document\.write|dangerouslySetInnerHTML|bypassSecurityTrustHtml'
     REG_TODO = r'//\s*(TODO|FIXME|HACK|XXX).*'
     
+    
     def _log(self, message):
         print(message)
         if hasattr(self, 'output_file') and self.output_file:
@@ -193,7 +194,7 @@ class Analysis:
                     break
         return mapped
 
-    def __print_objects(self, objects, js):
+    def __print_objects(self, objects, js, js_file=""):
         extracted_objects = 0
         mapped_objects = self.__map_objects(objects)
         for section in mapped_objects.keys():
@@ -210,18 +211,23 @@ class Analysis:
             self._log(f'\nThe extraction process yielded no viable {self.ORANGE}objects{self.WHITE}\n')
         
         # Look for paths.
-        return self.__print_paths(js)
+        return self.__print_paths(js, js_file)
 
-    def __print_paths(self, js):
+    def __print_paths(self, js, js_file=''):
         paths_dict = self.__get_paths(js)
         for k, paths in paths_dict.items():
             self._log(f'{self.YELLOW}{k} {self.WHITE}(Total paths: {len(paths)})')
             for path in sorted(paths):
                 self._log(f'{self.GREEN}{path}{self.WHITE}')
+                # Collect for HTML report
+                if hasattr(self, 'html_data'):
+                    if k not in self.html_data['paths']:
+                        self.html_data['paths'][k] = []
+                    self.html_data['paths'][k].append({'value': path, 'file': js_file})
             self._log('')
         return paths_dict
     
-    def __extract_secrets(self, js):
+    def __extract_secrets(self, js, js_file=''):
         secrets = []
         secrets.extend([f'AWS Key: {x}' for x in re.findall(self.REG_AWS, js)])
         secrets.extend([f'Google Key: {x}' for x in re.findall(self.REG_GOOGLE, js)])
@@ -233,9 +239,12 @@ class Analysis:
             self._log(f'{self.CYAN}Secrets & Keys\n--------------{self.WHITE}')
             for secret in set(secrets):
                 self._log(f'{self.RED}{secret}{self.WHITE}')
+                # Collect for HTML report
+                if hasattr(self, 'html_data'):
+                    self.html_data['secrets'].append({'value': secret, 'file': js_file})
             self._log('')
             
-    def __extract_emails_ips(self, js):
+    def __extract_emails_ips(self, js, js_file=''):
         # Email & IP
         emails = re.findall(self.REG_EMAIL, js)
         ips = re.findall(self.REG_IP, js)
@@ -244,6 +253,9 @@ class Analysis:
             self._log(f'{self.CYAN}Emails\n------{self.WHITE}')
             for email in set(emails):
                 self._log(f'{self.BLUE}{email}{self.WHITE}')
+                # Collect for HTML report
+                if hasattr(self, 'html_data'):
+                    self.html_data['emails'].append({'value': email, 'file': js_file})
             self._log('')
             
         if ips:
@@ -258,9 +270,12 @@ class Analysis:
                 self._log(f'{self.CYAN}IP Addresses\n------------{self.WHITE}')
                 for ip in sorted(valid_ips):
                     self._log(f'{self.ORANGE}{ip}{self.WHITE}')
+                    # Collect for HTML report
+                    if hasattr(self, 'html_data'):
+                        self.html_data['ips'].append({'value': ip, 'file': js_file})
                 self._log('')
 
-    def __extract_comments(self, js):
+    def __extract_comments(self, js, js_file=''):
         todos = re.findall(self.REG_TODO, js)
         if todos:
              # re.findall with group returns only the group, we want the whole match or we need to adjust regex
@@ -271,18 +286,28 @@ class Analysis:
                 self._log(f'{self.CYAN}Developer Comments\n------------------{self.WHITE}')
                 for comment in set(comments):
                     self._log(f'{self.YELLOW}{comment.strip()}{self.WHITE}')
+                    # Collect for HTML report
+                    if hasattr(self, 'html_data'):
+                        self.html_data['comments'].append({'value': comment.strip(), 'file': js_file})
                 self._log('')
 
-    def __extract_sinks(self, js):
+    def __extract_sinks(self, js, js_file=''):
         sinks = re.findall(self.REG_DOM_SINK, js)
         if sinks:
             self._log(f'{self.CYAN}Dangerous Functions (DOM Sinks)\n-------------------------------{self.WHITE}')
-            for sink in set(sinks):
+            for sink in sorted(set(sinks)):
                 self._log(f'{self.RED}{sink}{self.WHITE}')
+                # Collect for HTML report
+                if hasattr(self, 'html_data'):
+                    self.html_data['sinks'].append({'value': sink, 'file': js_file})
             self._log('')
 
     def __parse_js(self, js_file):
         self._log(f'Fetching {self.CYAN}{js_file}{self.WHITE}')
+        
+        # Track parsed files for HTML report
+        if hasattr(self, 'html_data') and js_file not in self.html_data ['parsed_files']:
+            self.html_data['parsed_files'].append(js_file)
         
         content = ""
         if os.path.exists(js_file) and not js_file.startswith(('http:', 'https:')):
@@ -293,14 +318,14 @@ class Analysis:
 
         js = content
         
-        # New Extractions
-        self.__extract_secrets(js)
-        self.__extract_emails_ips(js)
-        self.__extract_comments(js)
-        self.__extract_sinks(js)
+        # New Extractions - pass js_file for tracking
+        self.__extract_secrets(js, js_file)
+        self.__extract_emails_ips(js, js_file)
+        self.__extract_comments(js, js_file)
+        self.__extract_sinks(js, js_file)
         
         objects = re.findall(self.REG_O, js) + re.findall(self.REG_L, js)
-        return self.__print_objects(set(objects), js)
+        return self.__print_objects(set(objects), js, js_file)
     
     def __parse_all_js_files(self):
         js_queue = []
@@ -351,11 +376,419 @@ class Analysis:
                              self._log(f'{self.GREEN} + Added to queue: {full_path}{self.WHITE}')
 
     def analyze(self):
+        # Initialize HTML report data collection
+        self.html_data = {
+            'target_url': self.base,
+            'parsed_files': [],
+            'secrets': [],
+            'emails': [],
+            'ips': [],
+            'comments': [],
+            'sinks': [],
+            'objects': {},
+            'paths': {}
+        }
+        
         if not self.base.startswith(('http:', 'https:')) and os.path.exists(self.base):
              self.__parse_js(self.base)
+             # Generate HTML report if requested
+             if hasattr(self, 'html_output') and self.html_output:
+                 self.__generate_html_report()
              return
 
         if '.js' in self.base or self.strict:
             self.__parse_js(self.base)
         else:
             self.__parse_all_js_files()
+        
+        # Generate HTML report if requested
+        if hasattr(self, 'html_output') and self.html_output:
+            self.__generate_html_report()
+
+    def __generate_html_report(self):
+        """Generate interactive HTML dashboard report"""
+        import json
+        from datetime import datetime
+        
+        html_template = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aranea Analysis Report</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(30, 30, 40, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }}
+        
+        .header {{
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+        }}
+        
+        .header h1 {{
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }}
+        
+        .header .meta {{
+            color: #a0a0a0;
+            font-size: 0.95em;
+        }}
+        
+        .header .target-url {{
+            color: #667eea;
+            font-weight: bold;
+            word-break: break-all;
+        }}
+        
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+        
+        .stat-card {{
+            background: linear-gradient(135deg, #2a2a3a 0%, #1f1f2e 100%);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid #667eea33;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }}
+        
+        .stat-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }}
+        
+        .stat-card .number {{
+            font-size: 2.5em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
+        
+        .stat-card .label {{
+            color: #a0a0a0;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }}
+        
+        .filters {{
+            background: #2a2a3a;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }}
+        
+        .filter-group {{
+            flex: 1;
+            min-width: 200px;
+        }}
+        
+        .filter-group label {{
+            display: block;
+            margin-bottom: 8px;
+            color: #667eea;
+            font-weight: 500;
+        }}
+        
+        .filter-group select, .filter-group input {{
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #667eea44;
+            background: #1f1f2e;
+            color: #e0e0e0;
+            font-size: 0.95em;
+        }}
+        
+        .filter-group select:focus, .filter-group input:focus {{
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }}
+        
+        .results-section {{
+            margin-top: 30px;
+        }}
+        
+        .section-header {{
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .category {{
+            background: #2a2a3a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }}
+        
+        .category-title {{
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #667eea;
+        }}
+        
+        .item {{
+            background: #1f1f2e;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #667eea22;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            word-break: break-all;
+        }}
+        
+        .item.secret {{ border-left: 3px solid #ff4757; }}
+        .item.email {{ border-left: 3px solid #feca57; }}
+        .item.ip {{ border-left: 3px solid #5f27cd; }}
+        .item.sink {{ border-left: 3px solid #ff6348; }}
+        .item.comment {{ border-left: 3px solid #48dbfb; }}
+        .item.path {{ border-left: 3px solid #00d2d3; }}
+        
+        .hidden {{
+            display: none !important;
+        }}
+        
+        .empty-state {{
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }}
+        
+        .empty-state svg {{
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🕷️ Aranea Analysis Report</h1>
+            <div class="meta">
+                <div><strong>Target URL:</strong> <span class="target-url" id="target-url"></span></div>
+                <div><strong>Generated:</strong> <span id="timestamp"></span></div>
+                <div><strong>Files Analyzed:</strong> <span id="files-count"></span></div>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="number" id="stat-secrets">0</div>
+                <div class="label">Secrets & Keys</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="stat-emails">0</div>
+                <div class="label">Emails</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="stat-ips">0</div>
+                <div class="label">IP Addresses</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="stat-sinks">0</div>
+                <div class="label">DOM Sinks</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="stat-comments">0</div>
+                <div class="label">Comments</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="stat-paths">0</div>
+                <div class="label">Paths</div>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <div class="filter-group">
+                <label for="category-filter">Filter by Category</label>
+                <select id="category-filter">
+                    <option value="all">All Categories</option>
+                    <option value="secrets">Secrets & Keys</option>
+                    <option value="emails">Emails</option>
+                    <option value="ips">IP Addresses</option>
+                    <option value="sinks">DOM Sinks</option>
+                    <option value="comments">Comments</option>
+                    <option value="paths">Paths</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="file-filter">Filter by JS File</label>
+                <select id="file-filter">
+                    <option value="all">All Files</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="search-input">Search</label>
+                <input type="text" id="search-input" placeholder="Type to search...">
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <div class="section-header">📋 Analysis Results</div>
+            <div id="results-container"></div>
+            <div id="empty-state" class="empty-state hidden">
+                <div>🔍</div>
+                <p>No results found matching your filters</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const data = {json.dumps(self.html_data, indent=2)};
+        
+        // Initialize
+        document.getElementById('target-url').textContent = data.target_url || 'N/A';
+        document.getElementById('timestamp').textContent = '{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}';
+        document.getElementById('files-count').textContent = data.parsed_files.length;
+        
+        // Update stats
+        document.getElementById('stat-secrets').textContent = data.secrets.length;
+        document.getElementById('stat-emails').textContent = data.emails.length;
+        document.getElementById('stat-ips').textContent = data.ips.length;
+        document.getElementById('stat-sinks').textContent = data.sinks.length;
+        document.getElementById('stat-comments').textContent = data.comments.length;
+        
+        const totalPaths = Object.values(data.paths).reduce((sum, paths) => sum + paths.length, 0);
+        document.getElementById('stat-paths').textContent = totalPaths;
+        
+        // Populate file filter
+        const fileFilter = document.getElementById('file-filter');
+        data.parsed_files.forEach(file => {{
+            const option = document.createElement('option');
+            option.value = file;
+            option.textContent = file;
+            fileFilter.appendChild(option);
+        }});
+        
+        // Render results
+        function renderResults() {{
+            const categoryFilter = document.getElementById('category-filter').value;
+            const fileFilter = document.getElementById('file-filter').value;
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const container = document.getElementById('results-container');
+            const emptyState = document.getElementById('empty-state');
+            
+            container.innerHTML = '';
+            let hasResults = false;
+            
+            // Render each category
+            const categories = [
+                {{ key: 'secrets', title: '🔑 Secrets & Keys', type: 'secret' }},
+                {{ key: 'emails', title: '📧 Emails', type: 'email' }},
+                {{ key: 'ips', title: '🌐 IP Addresses', type: 'ip' }},
+                {{ key: 'sinks', title: '⚠️ Dangerous Functions (DOM Sinks)', type: 'sink' }},
+                {{ key: 'comments', title: '💬 Developer Comments', type: 'comment' }},
+            ];
+            
+            categories.forEach(cat => {{
+                if (categoryFilter === 'all' || categoryFilter === cat.key) {{
+                    const items = data[cat.key].filter(item => 
+                        (searchTerm === '' || item.value.toLowerCase().includes(searchTerm)) &&
+                        (fileFilter === 'all' || item.file === fileFilter)
+                    );
+                    
+                    if (items.length > 0) {{
+                        hasResults = true;
+                        const categoryDiv = document.createElement('div');
+                        categoryDiv.className = 'category';
+                        categoryDiv.innerHTML = `<div class="category-title">${{cat.title}} (${{items.length}})</div>`;
+                        
+                        items.forEach(item => {{
+                            const itemDiv = document.createElement('div');
+                            itemDiv.className = `item ${{cat.type}}`;
+                            itemDiv.textContent = item.value;
+                            categoryDiv.appendChild(itemDiv);
+                        }});
+                        
+                        container.appendChild(categoryDiv);
+                    }}
+                }}
+            }});
+            
+            // Render paths
+            if (categoryFilter === 'all' || categoryFilter === 'paths') {{
+                Object.entries(data.paths).forEach(([category, paths]) => {{
+                    const filteredPaths = paths.filter(item =>
+                        (searchTerm === '' || item.value.toLowerCase().includes(searchTerm)) &&
+                        (fileFilter === 'all' || item.file === fileFilter)
+                    );
+                    
+                    if (filteredPaths.length > 0) {{
+                        hasResults = true;
+                        const categoryDiv = document.createElement('div');
+                        categoryDiv.className = 'category';
+                        categoryDiv.innerHTML = `<div class="category-title">📁 ${{category}} (${{filteredPaths.length}})</div>`;
+                        
+                        filteredPaths.forEach(item => {{
+                            const itemDiv = document.createElement('div');
+                            itemDiv.className = 'item path';
+                            itemDiv.textContent = item.value;
+                            categoryDiv.appendChild(itemDiv);
+                        }});
+                        
+                        container.appendChild(categoryDiv);
+                    }}
+                }});
+            }}
+            
+            emptyState.classList.toggle('hidden', hasResults);
+        }}
+        
+        // Event listeners
+        document.getElementById('category-filter').addEventListener('change', renderResults);
+        document.getElementById('file-filter').addEventListener('change', renderResults);
+        document.getElementById('search-input').addEventListener('input', renderResults);
+        
+        // Initial render
+        renderResults();
+    </script>
+</body>
+</html>'''
+        
+        # Write HTML file
+        with open(self.html_output, 'w', encoding='utf-8', errors='ignore') as f:
+            f.write(html_template)
+        
+        print(f'{self.GREEN}✓ HTML report generated: {self.html_output}{self.WHITE}')

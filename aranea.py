@@ -11,8 +11,8 @@ from utils import strings
 
 class Aranea(Base, Colour, Analysis, Crawler):
 
-    def __init__(self, url, threads, headers, strict, mainonly=False, continuous=False, output=None, auto=False):
-        super().__init__(url, threads, headers, strict, mainonly, continuous, output, auto)
+    def __init__(self, url, threads, headers, strict, mainonly=False, continuous=False, output=None, auto=False, html_output=None):
+        super().__init__(url, threads, headers, strict, mainonly, continuous, output, auto, html_output)
 
     @staticmethod
     def parse_args():
@@ -28,7 +28,10 @@ class Aranea(Base, Colour, Analysis, Crawler):
             required=True)
         parser.add_argument(
             '-o', '--output',
-            help="Output file to save analysis results")
+            help='Output file to save analysis results (analysis mode only).')
+        parser.add_argument(
+            '--html',
+            help='Generate interactive HTML report (analysis mode only).')
         parser.add_argument(
             '-t', '--threads',
             help="Default configuration: 10 threads", default=10)
@@ -55,13 +58,13 @@ class Aranea(Base, Colour, Analysis, Crawler):
         return parser.parse_args()
 
     @staticmethod
-    def run_on_url(url, mode, threads, headers, strict, mainonly, continuous, output, auto):
+    def run_on_url(url, mode, threads, headers, strict, mainonly, continuous, output, auto, html_output):
         """Run the specified mode on a single URL"""
         try:
             if mode in ('analysis', 'a'):
-                Aranea(url, threads, headers, strict, mainonly, continuous, output, auto).analyze()
+                Aranea(url, threads, headers, strict, mainonly, continuous, output, auto, html_output).analyze()
             elif mode in ('crawl', 'c'):
-                Aranea(url, threads, headers, strict, mainonly, continuous, output, auto).crawl()
+                Aranea(url, threads, headers, strict, mainonly, continuous, output, auto, html_output).crawl()
             else:
                 print(
                     f'{Aranea.RED} The mode "{mode}" does not exist!{Aranea.WHITE}')
@@ -81,6 +84,7 @@ if __name__ == '__main__':
     continuous = args.continuous
     output = args.output
     auto = args.auto
+    html_output = args.html
 
     # Collect URLs from either single URL or URL list file
     urls = []
@@ -121,4 +125,4 @@ Threads  :: {threads}
 '''
         print(banner)
         
-        Aranea.run_on_url(url, mode, threads, headers, strict, mainonly, continuous, output, auto)
+        Aranea.run_on_url(url, mode, threads, headers, strict, mainonly, continuous, output, auto, html_output)
