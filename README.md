@@ -144,7 +144,7 @@ python3 aranea.py -u https://example.com -m a -c
 
 ### Saving Analysis Results
 
-Save the output of the analysis to a file (stripped of colors for readability):
+Save the output of the analysis to a file:
 
 ```sh
 python3 aranea.py -u https://example.com -m a -o results.txt
