@@ -434,61 +434,368 @@ class Analysis:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aranea Analysis Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {{
+            --bg-color: #020617;
+            --container-bg: rgba(15, 23, 42, 0.7);
+            --card-bg: rgba(30, 41, 59, 0.5);
+            --accent-primary: #38bdf8;
+            --accent-secondary: #818cf8;
+            --accent-tertiary: #f43f5e;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: rgba(51, 65, 85, 0.5);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }}
+
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0f172a; color: #f1f5f9; min-height: 100vh; padding: 20px; line-height: 1.5; }}
-        .container {{ max-width: 1400px; margin: 0 auto; background: #1e293b; border-radius: 24px; padding: 40px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #334155; }}
-        .header {{ text-align: center; margin-bottom: 48px; position: relative; }}
-        .header h1 {{ font-size: 3rem; font-weight: 800; background: linear-gradient(135deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 16px; letter-spacing: -0.025em; }}
-        .header .meta {{ color: #94a3b8; font-size: 0.875rem; display: flex; justify-content: center; gap: 24px; }}
-        .header .target-url {{ color: #38bdf8; font-weight: 600; text-decoration: none; }}
         
-        .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 40px; }}
-        .stat-card {{ background: #0f172a; padding: 24px; border-radius: 20px; border: 1px solid #334155; transition: all 0.2s ease; cursor: default; }}
-        .stat-card:hover {{ transform: translateY(-4px); border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.1); }}
-        .stat-card .number {{ font-size: 2.25rem; font-weight: 700; color: #f8fafc; margin-bottom: 4px; }}
-        .stat-card .label {{ color: #94a3b8; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }}
+        body {{ 
+            font-family: 'Outfit', sans-serif; 
+            background: radial-gradient(circle at top right, #1e1b4b, #020617);
+            background-attachment: fixed;
+            color: var(--text-primary); 
+            min-height: 100vh; 
+            padding: 20px; 
+            line-height: 1.6;
+        }}
 
-        .filters {{ background: #0f172a; padding: 24px; border-radius: 20px; margin-bottom: 40px; border: 1px solid #334155; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }}
-        .filter-group label {{ display: block; margin-bottom: 12px; color: #f1f5f9; font-size: 0.875rem; font-weight: 600; }}
-        
-        /* Custom Multi-select */
-        .multi-select {{ position: relative; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 8px 12px; min-height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }}
-        .multi-select-options {{ position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 12px; max-height: 300px; overflow-y: auto; z-index: 50; display: none; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); }}
-        .multi-select.active .multi-select-options {{ display: block; }}
-        .option-item {{ display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; transition: background 0.1s; font-size: 0.875rem; }}
-        .option-item:hover {{ background: #334155; }}
-        .option-item input {{ cursor: pointer; }}
-        
-        .search-box {{ width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #334155; background: #1e293b; color: #f1f5f9; font-size: 0.875rem; transition: border-color 0.2s; }}
-        .search-box:focus {{ outline: none; border-color: #38bdf8; ring: 2px solid #38bdf8; }}
+        .container {{ 
+            max-width: 1400px; 
+            margin: 40px auto; 
+            background: var(--container-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 32px; 
+            padding: 48px; 
+            box-shadow: var(--glass-shadow);
+            border: 1px solid var(--glass-border);
+        }}
 
-        .category {{ background: #0f172a; border-radius: 20px; padding: 24px; margin-bottom: 24px; border: 1px solid #334155; border-left: 6px solid #38bdf8; transition: opacity 0.3s; }}
-        .category-title {{ font-size: 1.25rem; font-weight: 700; margin-bottom: 20px; color: #f8fafc; display: flex; align-items: center; gap: 12px; }}
-        .item {{ background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #334155; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.8125rem; word-break: break-all; color: #e2e8f0; position: relative; }}
+        .header {{ 
+            text-align: center; 
+            margin-bottom: 60px; 
+            position: relative; 
+        }}
+        
+        .header h1 {{ 
+            font-size: 3.5rem; 
+            font-weight: 800; 
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            margin-bottom: 20px; 
+            letter-spacing: -0.04em;
+            filter: drop-shadow(0 0 30px rgba(56, 189, 248, 0.3));
+        }}
+
+        .header .meta {{ 
+            color: var(--text-secondary); 
+            font-size: 0.95rem; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            gap: 32px; 
+            flex-wrap: wrap;
+        }}
+
+        .header .meta span {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }}
+
+        .header .meta i {{
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }}
+
+        .header .target-url {{ 
+            color: var(--accent-primary); 
+            font-weight: 600; 
+            text-decoration: none; 
+            transition: color 0.2s;
+        }}
+        .header .target-url:hover {{ color: var(--accent-secondary); }}
+        
+        .stats-grid {{ 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 48px; 
+        }}
+
+        .stat-card {{ 
+            background: var(--card-bg);
+            backdrop-filter: blur(8px);
+            padding: 24px; 
+            border-radius: 24px; 
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }}
+
+        .stat-card::before {{
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, transparent, rgba(255,255,255,0.05));
+            pointer-events: none;
+        }}
+
+        .stat-card:hover {{ 
+            transform: translateY(-8px); 
+            border-color: var(--accent-primary);
+            box-shadow: 0 12px 24px -10px rgba(56, 189, 248, 0.3);
+        }}
+
+        .stat-card .number {{ 
+            font-size: 2.5rem; 
+            font-weight: 800; 
+            color: #fff; 
+            margin-bottom: 6px; 
+            letter-spacing: -0.02em;
+        }}
+
+        .stat-card .label {{ 
+            color: var(--text-secondary); 
+            font-size: 0.8rem; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 0.1em; 
+        }}
+
+        .filters {{ 
+            background: rgba(15, 23, 42, 0.5);
+            padding: 32px; 
+            border-radius: 28px; 
+            margin-bottom: 48px; 
+            border: 1px solid var(--border-color); 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 32px; 
+        }}
+
+        .filter-group label {{ 
+            display: block; 
+            margin-bottom: 14px; 
+            color: var(--text-primary); 
+            font-size: 0.9rem; 
+            font-weight: 600; 
+            letter-spacing: 0.02em;
+        }}
+        
+        .multi-select {{ 
+            position: relative; 
+            background: #0f172a; 
+            border: 1px solid var(--border-color); 
+            border-radius: 14px; 
+            padding: 12px 18px; 
+            min-height: 48px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            transition: all 0.2s;
+        }}
+
+        .multi-select:hover {{ border-color: var(--accent-primary); }}
+
+        .multi-select-options {{ 
+            position: absolute; 
+            top: calc(100% + 10px); 
+            left: 0; 
+            right: 0; 
+            background: #0f172a; 
+            border: 1px solid var(--border-color); 
+            border-radius: 16px; 
+            padding: 16px; 
+            max-height: 350px; 
+            overflow-y: auto; 
+            z-index: 100; 
+            display: none; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
+            backdrop-filter: blur(20px);
+        }}
+
+        .multi-select.active .multi-select-options {{ display: block; animation: slideDown 0.2s ease-out; }}
+
+        @keyframes slideDown {{
+            from {{ opacity: 0; transform: translateY(-10px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+
+        .option-item {{ 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            padding: 10px 14px; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            transition: background 0.2s; 
+            font-size: 0.9rem; 
+            color: var(--text-secondary);
+        }}
+
+        .option-item:hover {{ background: #1e293b; color: var(--text-primary); }}
+        .option-item input {{ 
+            accent-color: var(--accent-primary);
+            width: 18px; height: 18px; cursor: pointer; 
+        }}
+        
+        .search-box {{ 
+            width: 100%; 
+            padding: 14px 20px; 
+            border-radius: 14px; 
+            border: 1px solid var(--border-color); 
+            background: #0f172a; 
+            color: var(--text-primary); 
+            font-size: 0.9rem; 
+            transition: all 0.2s; 
+            font-family: inherit;
+        }}
+
+        .search-box:focus {{ 
+            outline: none; 
+            border-color: var(--accent-primary); 
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+        }}
+
+        .category {{ 
+            background: var(--card-bg);
+            backdrop-filter: blur(8px);
+            border-radius: 28px; 
+            padding: 32px; 
+            margin-bottom: 32px; 
+            border: 1px solid var(--glass-border); 
+            transition: opacity 0.3s;
+            position: relative;
+        }}
+
+        .category::before {{
+            content: '';
+            position: absolute;
+            left: 0; top: 32px; bottom: 32px; width: 6px;
+            background: linear-gradient(to bottom, var(--accent-primary), var(--accent-secondary));
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }}
+
+        .category-title {{ 
+            font-size: 1.5rem; 
+            font-weight: 700; 
+            margin-bottom: 24px; 
+            color: #fff; 
+            display: flex; 
+            align-items: center; 
+            gap: 16px; 
+            letter-spacing: -0.02em;
+        }}
+
+        .item {{ 
+            background: rgba(15, 23, 42, 0.4); 
+            padding: 20px; 
+            border-radius: 16px; 
+            margin-bottom: 16px; 
+            border: 1px solid var(--border-color); 
+            font-family: 'JetBrains Mono', monospace; 
+            font-size: 0.85rem; 
+            word-break: break-all; 
+            color: #e2e8f0; 
+            position: relative; 
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+        }}
+
+        .item:hover {{ 
+            background: rgba(30, 41, 59, 0.6); 
+            border-color: var(--accent-primary);
+            transform: scale(1.005);
+        }}
+
         .item:last-child {{ margin-bottom: 0; }}
-        .file-tag {{ position: absolute; top: 8px; right: 8px; font-size: 10px; color: #64748b; background: #0f172a; padding: 2px 6px; border-radius: 4px; border: 1px solid #334155; }}
+        
+        .file-tag {{ 
+            position: absolute; 
+            top: -10px; 
+            right: 20px; 
+            font-size: 11px; 
+            font-weight: 600;
+            color: var(--accent-primary); 
+            background: #0f172a; 
+            padding: 4px 12px; 
+            border-radius: 8px; 
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            text-transform: lowercase;
+        }}
 
-        .item.secret {{ border-left: 4px solid #f43f5e; }}
+        .item.secret {{ border-left: 4px solid var(--accent-tertiary); }}
         .item.email {{ border-left: 4px solid #f59e0b; }}
         .item.ip {{ border-left: 4px solid #8b5cf6; }}
         .item.sink {{ border-left: 4px solid #ef4444; }}
         .item.comment {{ border-left: 4px solid #06b6d4; }}
         .item.path {{ border-left: 4px solid #10b981; }}
-        .item.object {{ border-left: 4px solid #a855f7; }}
+        .item.object {{ border-left: 4px solid var(--accent-secondary); }}
 
-        .empty-state {{ text-align: center; padding: 80px 0; color: #64748b; }}
+        .empty-state {{ 
+            text-align: center; 
+            padding: 100px 0; 
+            color: var(--text-secondary); 
+            font-size: 1.2rem;
+            font-weight: 500;
+        }}
+        
         .hidden {{ display: none !important; }}
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {{ width: 8px; height: 8px; }}
+        ::-webkit-scrollbar-track {{ background: transparent; }}
+        ::-webkit-scrollbar-thumb {{ background: var(--border-color); border-radius: 10px; }}
+        ::-webkit-scrollbar-thumb:hover {{ background: var(--text-secondary); }}
+
+        .clear-btn {{
+            background: rgba(244, 63, 94, 0.1);
+            color: var(--accent-tertiary);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+            padding: 12px 24px;
+            border-radius: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: fit-content;
+            grid-column: 1 / -1;
+            margin: 0 auto;
+        }}
+        .clear-btn:hover {{
+            background: var(--accent-tertiary);
+            color: white;
+            box-shadow: 0 0 20px rgba(244, 63, 94, 0.3);
+            transform: translateY(-2px);
+        }}
     </style>
 </head>
 <body>
     <div class="container" onclick="closeAllMultiSelects(event)">
         <div class="header">
-            <h1>🕷️ Aranea Analysis</h1>
+            <h1><i class="fa-solid fa-spider" style="margin-right: 15px; font-size: 0.9em;"></i>Aranea Analysis Report</h1>
             <div class="meta">
-                <span>Target: <a href="{self.html_data['target_url']}" class="target-url" target="_blank">{self.html_data['target_url']}</a></span>
-                <span>📅 {datetime.now().strftime("%Y-%m-%d %H:%M")}</span>
-                <span>📦 <span id="files-count"></span> JS Files</span>
+                <span><i class="fa-solid fa-link"></i> <a href="{self.html_data['target_url']}" class="target-url" target="_blank">{self.html_data['target_url']}</a></span>
+                <span><i class="fa-solid fa-calendar-days" style="margin-right: 5px;"></i> {datetime.now().strftime("%Y-%m-%d %H:%M")}</span>
+                <span><i class="fa-solid fa-box-open"></i> <span id="files-count"></span> JS Files</span>
             </div>
         </div>
         
@@ -496,34 +803,38 @@ class Analysis:
         
         <div class="filters">
             <div class="filter-group">
-                <label>Filter Categories</label>
+                <label>Finding Category</label>
                 <div class="multi-select" id="cat-select" onclick="toggleMultiSelect(this, event)">
                     <span>Selected: <span id="cat-count">All</span></span>
                     <div class="multi-select-options" id="cat-options"></div>
                 </div>
             </div>
             <div class="filter-group">
-                <label>Filter Files</label>
+                <label>Source JavaScript File</label>
                 <div class="multi-select" id="file-select" onclick="toggleMultiSelect(this, event)">
                     <span>Selected: <span id="file-count">All</span></span>
                     <div class="multi-select-options" id="file-options"></div>
                 </div>
             </div>
             <div class="filter-group">
-                <label>Filter Keywords</label>
+                <label>Specific Keywords</label>
                 <div class="multi-select" id="kw-select" onclick="toggleMultiSelect(this, event)">
                     <span>Selected: <span id="kw-count">All</span></span>
                     <div class="multi-select-options" id="kw-options"></div>
                 </div>
             </div>
             <div class="filter-group">
-                <label>Search Results</label>
-                <input type="text" id="search-input" class="search-box" placeholder="Filter by text content...">
+                <label>Generic Search</label>
+                <input type="text" id="search-input" class="search-box" placeholder="Match findings by content...">
             </div>
+            <button class="clear-btn" onclick="clearAllFilters()">
+                <i class="fa-solid fa-filter-circle-xmark"></i>
+                Clear All Filters
+            </button>
         </div>
         
         <div id="results-container"></div>
-        <div id="empty-state" class="empty-state hidden">No results match your current filters.</div>
+        <div id="empty-state" class="empty-state hidden">No findings match your active filters.</div>
     </div>
     
     <script>
@@ -592,6 +903,7 @@ class Analysis:
             const span = document.createElement('span');
             span.textContent = 'Select All';
             span.style.fontWeight = '700';
+            span.style.color = 'var(--accent-primary)';
             div.append(checkbox, span);
             container.appendChild(div);
         }}
@@ -624,6 +936,21 @@ class Analysis:
             
             document.getElementById(countId).textContent = 
                 activeFilters[filterKey].length === 0 ? 'All' : activeFilters[filterKey].length;
+        }}
+
+        function clearAllFilters() {{
+            activeFilters = {{
+                categories: [],
+                files: [],
+                keywords: [],
+                search: ""
+            }};
+            document.getElementById('search-input').value = '';
+            document.querySelectorAll('.multi-select-options input').forEach(cb => cb.checked = false);
+            updateFilterCount('categories');
+            updateFilterCount('files');
+            updateFilterCount('keywords');
+            render();
         }}
 
         function toggleMultiSelect(el, e) {{
