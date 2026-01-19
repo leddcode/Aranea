@@ -38,11 +38,14 @@ class Analysis:
     REG_TODO = r'//\s*(TODO|FIXME|HACK|XXX).*'
     
     
+    def __strip_ansi(self, text):
+        return re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', text)
+    
     def _log(self, message):
         print(message)
         if hasattr(self, 'output_file') and self.output_file:
              # Strip ANSI codes
-             plain_message = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', message)
+             plain_message = self.__strip_ansi(message)
              with open(self.output_file, 'a+', encoding='utf-8', errors='ignore') as f:
                  f.write(plain_message + '\n')
 
@@ -203,7 +206,15 @@ class Analysis:
                 self._log(f'\n{title}')
                 self._log('-' * (len(title) - 14) +  self.WHITE)
                 for o in mapped_objects[section]:
-                    self._log(f'{self.YELLOW}{self.__pretty_entry(o)}{self.WHITE}\n')
+                    entry = self.__pretty_entry(o)
+                    self._log(f'{self.YELLOW}{entry}{self.WHITE}\n')
+                    # Collect for HTML report
+                    if hasattr(self, 'html_data'):
+                        if 'objects' not in self.html_data:
+                            self.html_data['objects'] = {}
+                        if section not in self.html_data['objects']:
+                            self.html_data['objects'][section] = []
+                        self.html_data['objects'][section].append({'value': self.__strip_ansi(entry), 'file': js_file})
                     extracted_objects += 1
         
         # Warn - no useful data was found.
@@ -223,7 +234,7 @@ class Analysis:
                 if hasattr(self, 'html_data'):
                     if k not in self.html_data['paths']:
                         self.html_data['paths'][k] = []
-                    self.html_data['paths'][k].append({'value': path, 'file': js_file})
+                    self.html_data['paths'][k].append({'value': self.__strip_ansi(path), 'file': js_file})
             self._log('')
         return paths_dict
     
@@ -241,7 +252,7 @@ class Analysis:
                 self._log(f'{self.RED}{secret}{self.WHITE}')
                 # Collect for HTML report
                 if hasattr(self, 'html_data'):
-                    self.html_data['secrets'].append({'value': secret, 'file': js_file})
+                    self.html_data['secrets'].append({'value': self.__strip_ansi(secret), 'file': js_file})
             self._log('')
             
     def __extract_emails_ips(self, js, js_file=''):
@@ -255,7 +266,7 @@ class Analysis:
                 self._log(f'{self.BLUE}{email}{self.WHITE}')
                 # Collect for HTML report
                 if hasattr(self, 'html_data'):
-                    self.html_data['emails'].append({'value': email, 'file': js_file})
+                    self.html_data['emails'].append({'value': self.__strip_ansi(email), 'file': js_file})
             self._log('')
             
         if ips:
@@ -272,7 +283,7 @@ class Analysis:
                     self._log(f'{self.ORANGE}{ip}{self.WHITE}')
                     # Collect for HTML report
                     if hasattr(self, 'html_data'):
-                        self.html_data['ips'].append({'value': ip, 'file': js_file})
+                        self.html_data['ips'].append({'value': self.__strip_ansi(ip), 'file': js_file})
                 self._log('')
 
     def __extract_comments(self, js, js_file=''):
@@ -288,7 +299,7 @@ class Analysis:
                     self._log(f'{self.YELLOW}{comment.strip()}{self.WHITE}')
                     # Collect for HTML report
                     if hasattr(self, 'html_data'):
-                        self.html_data['comments'].append({'value': comment.strip(), 'file': js_file})
+                        self.html_data['comments'].append({'value': self.__strip_ansi(comment.strip()), 'file': js_file})
                 self._log('')
 
     def __extract_sinks(self, js, js_file=''):
@@ -299,7 +310,7 @@ class Analysis:
                 self._log(f'{self.RED}{sink}{self.WHITE}')
                 # Collect for HTML report
                 if hasattr(self, 'html_data'):
-                    self.html_data['sinks'].append({'value': sink, 'file': js_file})
+                    self.html_data['sinks'].append({'value': self.__strip_ansi(sink), 'file': js_file})
             self._log('')
 
     def __parse_js(self, js_file):
@@ -410,6 +421,13 @@ class Analysis:
         import json
         from datetime import datetime
         
+        # Ensure all keys exist
+        for key in ['target_url', 'parsed_files', 'secrets', 'emails', 'ips', 'comments', 'sinks', 'objects', 'paths']:
+            if key not in self.html_data:
+                if key in ['objects', 'paths']: self.html_data[key] = {}
+                elif key == 'parsed_files': self.html_data[key] = []
+                else: self.html_data[key] = [] if key != 'target_url' else ""
+
         html_template = f'''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -417,378 +435,305 @@ class Analysis:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aranea Analysis Report</title>
     <style>
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0f172a; color: #f1f5f9; min-height: 100vh; padding: 20px; line-height: 1.5; }}
+        .container {{ max-width: 1400px; margin: 0 auto; background: #1e293b; border-radius: 24px; padding: 40px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #334155; }}
+        .header {{ text-align: center; margin-bottom: 48px; position: relative; }}
+        .header h1 {{ font-size: 3rem; font-weight: 800; background: linear-gradient(135deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 16px; letter-spacing: -0.025em; }}
+        .header .meta {{ color: #94a3b8; font-size: 0.875rem; display: flex; justify-content: center; gap: 24px; }}
+        .header .target-url {{ color: #38bdf8; font-weight: 600; text-decoration: none; }}
         
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #e0e0e0;
-            min-height: 100vh;
-            padding: 20px;
-        }}
+        .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 40px; }}
+        .stat-card {{ background: #0f172a; padding: 24px; border-radius: 20px; border: 1px solid #334155; transition: all 0.2s ease; cursor: default; }}
+        .stat-card:hover {{ transform: translateY(-4px); border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.1); }}
+        .stat-card .number {{ font-size: 2.25rem; font-weight: 700; color: #f8fafc; margin-bottom: 4px; }}
+        .stat-card .label {{ color: #94a3b8; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }}
+
+        .filters {{ background: #0f172a; padding: 24px; border-radius: 20px; margin-bottom: 40px; border: 1px solid #334155; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }}
+        .filter-group label {{ display: block; margin-bottom: 12px; color: #f1f5f9; font-size: 0.875rem; font-weight: 600; }}
         
-        .container {{
-            max-width: 1400px;
-            margin: 0 auto;
-            background: rgba(30, 30, 40, 0.95);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        }}
+        /* Custom Multi-select */
+        .multi-select {{ position: relative; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 8px 12px; min-height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }}
+        .multi-select-options {{ position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 12px; max-height: 300px; overflow-y: auto; z-index: 50; display: none; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); }}
+        .multi-select.active .multi-select-options {{ display: block; }}
+        .option-item {{ display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; transition: background 0.1s; font-size: 0.875rem; }}
+        .option-item:hover {{ background: #334155; }}
+        .option-item input {{ cursor: pointer; }}
         
-        .header {{
-            text-align: center;
-            margin-bottom: 40px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #667eea;
-        }}
-        
-        .header h1 {{
-            font-size: 2.5em;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
-        }}
-        
-        .header .meta {{
-            color: #a0a0a0;
-            font-size: 0.95em;
-        }}
-        
-        .header .target-url {{
-            color: #667eea;
-            font-weight: bold;
-            word-break: break-all;
-        }}
-        
-        .stats-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }}
-        
-        .stat-card {{
-            background: linear-gradient(135deg, #2a2a3a 0%, #1f1f2e 100%);
-            padding: 20px;
-            border-radius: 15px;
-            border: 1px solid #667eea33;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }}
-        
-        .stat-card:hover {{
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-        }}
-        
-        .stat-card .number {{
-            font-size: 2.5em;
-            font-weight: bold;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }}
-        
-        .stat-card .label {{
-            color: #a0a0a0;
-            margin-top: 5px;
-            font-size: 0.9em;
-        }}
-        
-        .filters {{
-            background: #2a2a3a;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }}
-        
-        .filter-group {{
-            flex: 1;
-            min-width: 200px;
-        }}
-        
-        .filter-group label {{
-            display: block;
-            margin-bottom: 8px;
-            color: #667eea;
-            font-weight: 500;
-        }}
-        
-        .filter-group select, .filter-group input {{
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #667eea44;
-            background: #1f1f2e;
-            color: #e0e0e0;
-            font-size: 0.95em;
-        }}
-        
-        .filter-group select:focus, .filter-group input:focus {{
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }}
-        
-        .results-section {{
-            margin-top: 30px;
-        }}
-        
-        .section-header {{
-            font-size: 1.5em;
-            margin-bottom: 20px;
-            color: #667eea;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }}
-        
-        .category {{
-            background: #2a2a3a;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-left: 4px solid #667eea;
-        }}
-        
-        .category-title {{
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #667eea;
-        }}
-        
-        .item {{
-            background: #1f1f2e;
-            padding: 12px 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #667eea22;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-            word-break: break-all;
-        }}
-        
-        .item.secret {{ border-left: 3px solid #ff4757; }}
-        .item.email {{ border-left: 3px solid #feca57; }}
-        .item.ip {{ border-left: 3px solid #5f27cd; }}
-        .item.sink {{ border-left: 3px solid #ff6348; }}
-        .item.comment {{ border-left: 3px solid #48dbfb; }}
-        .item.path {{ border-left: 3px solid #00d2d3; }}
-        
-        .hidden {{
-            display: none !important;
-        }}
-        
-        .empty-state {{
-            text-align: center;
-            padding: 60px 20px;
-            color: #888;
-        }}
-        
-        .empty-state svg {{
-            width: 80px;
-            height: 80px;
-            margin-bottom: 20px;
-            opacity: 0.3;
-        }}
+        .search-box {{ width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #334155; background: #1e293b; color: #f1f5f9; font-size: 0.875rem; transition: border-color 0.2s; }}
+        .search-box:focus {{ outline: none; border-color: #38bdf8; ring: 2px solid #38bdf8; }}
+
+        .category {{ background: #0f172a; border-radius: 20px; padding: 24px; margin-bottom: 24px; border: 1px solid #334155; border-left: 6px solid #38bdf8; transition: opacity 0.3s; }}
+        .category-title {{ font-size: 1.25rem; font-weight: 700; margin-bottom: 20px; color: #f8fafc; display: flex; align-items: center; gap: 12px; }}
+        .item {{ background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #334155; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.8125rem; word-break: break-all; color: #e2e8f0; position: relative; }}
+        .item:last-child {{ margin-bottom: 0; }}
+        .file-tag {{ position: absolute; top: 8px; right: 8px; font-size: 10px; color: #64748b; background: #0f172a; padding: 2px 6px; border-radius: 4px; border: 1px solid #334155; }}
+
+        .item.secret {{ border-left: 4px solid #f43f5e; }}
+        .item.email {{ border-left: 4px solid #f59e0b; }}
+        .item.ip {{ border-left: 4px solid #8b5cf6; }}
+        .item.sink {{ border-left: 4px solid #ef4444; }}
+        .item.comment {{ border-left: 4px solid #06b6d4; }}
+        .item.path {{ border-left: 4px solid #10b981; }}
+        .item.object {{ border-left: 4px solid #a855f7; }}
+
+        .empty-state {{ text-align: center; padding: 80px 0; color: #64748b; }}
+        .hidden {{ display: none !important; }}
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" onclick="closeAllMultiSelects(event)">
         <div class="header">
-            <h1>🕷️ Aranea Analysis Report</h1>
+            <h1>🕷️ Aranea Analysis</h1>
             <div class="meta">
-                <div><strong>Target URL:</strong> <span class="target-url" id="target-url"></span></div>
-                <div><strong>Generated:</strong> <span id="timestamp"></span></div>
-                <div><strong>Files Analyzed:</strong> <span id="files-count"></span></div>
+                <span>Target: <a href="{self.html_data['target_url']}" class="target-url" target="_blank">{self.html_data['target_url']}</a></span>
+                <span>📅 {datetime.now().strftime("%Y-%m-%d %H:%M")}</span>
+                <span>📦 <span id="files-count"></span> JS Files</span>
             </div>
         </div>
         
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="number" id="stat-secrets">0</div>
-                <div class="label">Secrets & Keys</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="stat-emails">0</div>
-                <div class="label">Emails</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="stat-ips">0</div>
-                <div class="label">IP Addresses</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="stat-sinks">0</div>
-                <div class="label">DOM Sinks</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="stat-comments">0</div>
-                <div class="label">Comments</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="stat-paths">0</div>
-                <div class="label">Paths</div>
-            </div>
-        </div>
+        <div class="stats-grid" id="stats-grid"></div>
         
         <div class="filters">
             <div class="filter-group">
-                <label for="category-filter">Filter by Category</label>
-                <select id="category-filter">
-                    <option value="all">All Categories</option>
-                    <option value="secrets">Secrets & Keys</option>
-                    <option value="emails">Emails</option>
-                    <option value="ips">IP Addresses</option>
-                    <option value="sinks">DOM Sinks</option>
-                    <option value="comments">Comments</option>
-                    <option value="paths">Paths</option>
-                </select>
+                <label>Filter Categories</label>
+                <div class="multi-select" id="cat-select" onclick="toggleMultiSelect(this, event)">
+                    <span>Selected: <span id="cat-count">All</span></span>
+                    <div class="multi-select-options" id="cat-options"></div>
+                </div>
             </div>
             <div class="filter-group">
-                <label for="file-filter">Filter by JS File</label>
-                <select id="file-filter">
-                    <option value="all">All Files</option>
-                </select>
+                <label>Filter Files</label>
+                <div class="multi-select" id="file-select" onclick="toggleMultiSelect(this, event)">
+                    <span>Selected: <span id="file-count">All</span></span>
+                    <div class="multi-select-options" id="file-options"></div>
+                </div>
             </div>
             <div class="filter-group">
-                <label for="search-input">Search</label>
-                <input type="text" id="search-input" placeholder="Type to search...">
+                <label>Filter Keywords</label>
+                <div class="multi-select" id="kw-select" onclick="toggleMultiSelect(this, event)">
+                    <span>Selected: <span id="kw-count">All</span></span>
+                    <div class="multi-select-options" id="kw-options"></div>
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Search Results</label>
+                <input type="text" id="search-input" class="search-box" placeholder="Filter by text content...">
             </div>
         </div>
         
-        <div class="results-section">
-            <div class="section-header">📋 Analysis Results</div>
-            <div id="results-container"></div>
-            <div id="empty-state" class="empty-state hidden">
-                <div>🔍</div>
-                <p>No results found matching your filters</p>
-            </div>
-        </div>
+        <div id="results-container"></div>
+        <div id="empty-state" class="empty-state hidden">No results match your current filters.</div>
     </div>
     
     <script>
-        const data = {json.dumps(self.html_data, indent=2)};
+        const data = {json.dumps(self.html_data)};
         
-        // Initialize
-        document.getElementById('target-url').textContent = data.target_url || 'N/A';
-        document.getElementById('timestamp').textContent = '{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}';
-        document.getElementById('files-count').textContent = data.parsed_files.length;
-        
-        // Update stats
-        document.getElementById('stat-secrets').textContent = data.secrets.length;
-        document.getElementById('stat-emails').textContent = data.emails.length;
-        document.getElementById('stat-ips').textContent = data.ips.length;
-        document.getElementById('stat-sinks').textContent = data.sinks.length;
-        document.getElementById('stat-comments').textContent = data.comments.length;
-        
-        const totalPaths = Object.values(data.paths).reduce((sum, paths) => sum + paths.length, 0);
-        document.getElementById('stat-paths').textContent = totalPaths;
-        
-        // Populate file filter
-        const fileFilter = document.getElementById('file-filter');
-        data.parsed_files.forEach(file => {{
-            const option = document.createElement('option');
-            option.value = file;
-            option.textContent = file;
-            fileFilter.appendChild(option);
-        }});
-        
-        // Render results
-        function renderResults() {{
-            const categoryFilter = document.getElementById('category-filter').value;
-            const fileFilter = document.getElementById('file-filter').value;
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            const container = document.getElementById('results-container');
-            const emptyState = document.getElementById('empty-state');
+        let activeFilters = {{
+            categories: [],
+            files: [],
+            keywords: [],
+            search: ""
+        }};
+
+        function init() {{
+            document.getElementById('files-count').textContent = data.parsed_files.length;
+            initFilters();
+            updateStats();
+            render();
+        }}
+
+        function initFilters() {{
+            const cats = ['Secrets', 'Emails', 'IPs', 'DOM Sinks', 'Comments', 'Paths', 'Keywords'];
+            const catOptions = document.getElementById('cat-options');
+            createSelectAll(catOptions, 'categories');
+            cats.forEach(c => createOption(catOptions, c, 'categories'));
+
+            const fileOptions = document.getElementById('file-options');
+            createSelectAll(fileOptions, 'files');
+            data.parsed_files.forEach(f => createOption(fileOptions, f, 'files'));
+
+            const kwOptions = document.getElementById('kw-options');
+            createSelectAll(kwOptions, 'keywords');
+            Object.keys(data.objects || {{}}).forEach(k => createOption(kwOptions, k, 'keywords'));
             
-            container.innerHTML = '';
-            let hasResults = false;
+            document.getElementById('search-input').addEventListener('input', (e) => {{
+                activeFilters.search = e.target.value.toLowerCase();
+                render();
+            }});
+        }}
+
+        function createSelectAll(container, filterKey) {{
+            const div = document.createElement('div');
+            div.className = 'option-item select-all';
+            div.style.borderBottom = '1px solid #334155';
+            div.style.marginBottom = '8px';
+            div.style.paddingBottom = '8px';
+            div.onclick = (e) => e.stopPropagation();
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.onchange = () => {{
+                const options = container.querySelectorAll('input:not(.select-all-input)');
+                options.forEach(cb => {{
+                    cb.checked = checkbox.checked;
+                    const label = cb.nextSibling.textContent;
+                    if (checkbox.checked) {{
+                        if (!activeFilters[filterKey].includes(label)) activeFilters[filterKey].push(label);
+                    }} else {{
+                        activeFilters[filterKey] = activeFilters[filterKey].filter(v => v !== label);
+                    }}
+                }});
+                updateFilterCount(filterKey);
+                render();
+            }};
+            checkbox.className = 'select-all-input';
+
+            const span = document.createElement('span');
+            span.textContent = 'Select All';
+            span.style.fontWeight = '700';
+            div.append(checkbox, span);
+            container.appendChild(div);
+        }}
+
+        function createOption(container, label, filterKey) {{
+            const div = document.createElement('div');
+            div.className = 'option-item';
+            div.onclick = (e) => e.stopPropagation();
             
-            // Render each category
-            const categories = [
-                {{ key: 'secrets', title: '🔑 Secrets & Keys', type: 'secret' }},
-                {{ key: 'emails', title: '📧 Emails', type: 'email' }},
-                {{ key: 'ips', title: '🌐 IP Addresses', type: 'ip' }},
-                {{ key: 'sinks', title: '⚠️ Dangerous Functions (DOM Sinks)', type: 'sink' }},
-                {{ key: 'comments', title: '💬 Developer Comments', type: 'comment' }},
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.onchange = () => {{
+                if (checkbox.checked) activeFilters[filterKey].push(label);
+                else activeFilters[filterKey] = activeFilters[filterKey].filter(v => v !== label);
+                updateFilterCount(filterKey);
+                render();
+            }};
+            
+            const span = document.createElement('span');
+            span.textContent = label;
+            div.append(checkbox, span);
+            container.appendChild(div);
+        }}
+
+        function updateFilterCount(filterKey) {{
+            let countId;
+            if (filterKey === 'categories') countId = 'cat-count';
+            else if (filterKey === 'files') countId = 'file-count';
+            else if (filterKey === 'keywords') countId = 'kw-count';
+            
+            document.getElementById(countId).textContent = 
+                activeFilters[filterKey].length === 0 ? 'All' : activeFilters[filterKey].length;
+        }}
+
+        function toggleMultiSelect(el, e) {{
+            e.stopPropagation();
+            const wasActive = el.classList.contains('active');
+            closeAllMultiSelects();
+            if (!wasActive) el.classList.add('active');
+        }}
+
+        function closeAllMultiSelects() {{
+            document.querySelectorAll('.multi-select').forEach(el => el.classList.remove('active'));
+        }}
+
+        function updateStats() {{
+            const stats = [
+                {{ label: 'Secrets', count: data.secrets.length }},
+                {{ label: 'Emails', count: data.emails.length }},
+                {{ label: 'IPs', count: data.ips.length }},
+                {{ label: 'DOM Sinks', count: data.sinks.length }},
+                {{ label: 'Comments', count: data.comments.length }},
+                {{ label: 'Keywords', count: Object.values(data.objects || {{}}).flat().length }},
+                {{ label: 'Paths', count: Object.values(data.paths || {{}}).flat().length }}
             ];
             
-            categories.forEach(cat => {{
-                if (categoryFilter === 'all' || categoryFilter === cat.key) {{
-                    const items = data[cat.key].filter(item => 
-                        (searchTerm === '' || item.value.toLowerCase().includes(searchTerm)) &&
-                        (fileFilter === 'all' || item.file === fileFilter)
-                    );
-                    
-                    if (items.length > 0) {{
-                        hasResults = true;
-                        const categoryDiv = document.createElement('div');
-                        categoryDiv.className = 'category';
-                        categoryDiv.innerHTML = `<div class="category-title">${{cat.title}} (${{items.length}})</div>`;
-                        
-                        items.forEach(item => {{
-                            const itemDiv = document.createElement('div');
-                            itemDiv.className = `item ${{cat.type}}`;
-                            itemDiv.textContent = item.value;
-                            categoryDiv.appendChild(itemDiv);
-                        }});
-                        
-                        container.appendChild(categoryDiv);
-                    }}
+            const grid = document.getElementById('stats-grid');
+            grid.innerHTML = stats.map(s => `
+                <div class="stat-card">
+                    <div class="number">${{s.count}}</div>
+                    <div class="label">${{s.label}}</div>
+                </div>
+            `).join('');
+        }}
+
+        function render() {{
+            const container = document.getElementById('results-container');
+            container.innerHTML = '';
+            let totalFound = 0;
+
+            const sections = [
+                {{ id: 'Secrets', data: data.secrets, type: 'secret' }},
+                {{ id: 'Emails', data: data.emails, type: 'email' }},
+                {{ id: 'IPs', data: data.ips, type: 'ip' }},
+                {{ id: 'DOM Sinks', data: data.sinks, type: 'sink' }},
+                {{ id: 'Comments', data: data.comments, type: 'comment' }}
+            ];
+
+            sections.forEach(s => {{
+                if (activeFilters.categories.length > 0 && !activeFilters.categories.includes(s.id)) return;
+                const filtered = s.data.filter(item => isVisible(item));
+                if (filtered.length > 0) {{
+                    totalFound += renderCategory(s.id, filtered, s.type);
                 }}
             }});
-            
-            // Render paths
-            if (categoryFilter === 'all' || categoryFilter === 'paths') {{
-                Object.entries(data.paths).forEach(([category, paths]) => {{
-                    const filteredPaths = paths.filter(item =>
-                        (searchTerm === '' || item.value.toLowerCase().includes(searchTerm)) &&
-                        (fileFilter === 'all' || item.file === fileFilter)
-                    );
-                    
-                    if (filteredPaths.length > 0) {{
-                        hasResults = true;
-                        const categoryDiv = document.createElement('div');
-                        categoryDiv.className = 'category';
-                        categoryDiv.innerHTML = `<div class="category-title">📁 ${{category}} (${{filteredPaths.length}})</div>`;
-                        
-                        filteredPaths.forEach(item => {{
-                            const itemDiv = document.createElement('div');
-                            itemDiv.className = 'item path';
-                            itemDiv.textContent = item.value;
-                            categoryDiv.appendChild(itemDiv);
-                        }});
-                        
-                        container.appendChild(categoryDiv);
+
+            // Objects/Keywords
+            if (activeFilters.categories.length === 0 || activeFilters.categories.includes('Keywords')) {{
+                Object.entries(data.objects || {{}}).forEach(([kw, items]) => {{
+                    if (activeFilters.keywords.length > 0 && !activeFilters.keywords.includes(kw)) return;
+                    const filtered = items.filter(item => isVisible(item));
+                    if (filtered.length > 0) {{
+                        totalFound += renderCategory(`Keyword: ${{kw}}`, filtered, 'object');
                     }}
                 }});
             }}
-            
-            emptyState.classList.toggle('hidden', hasResults);
+
+            // Paths
+            if (activeFilters.categories.length === 0 || activeFilters.categories.includes('Paths')) {{
+                Object.entries(data.paths || {{}}).forEach(([pType, items]) => {{
+                    const filtered = items.filter(item => isVisible(item));
+                    if (filtered.length > 0) {{
+                        totalFound += renderCategory(`Path: ${{pType}}`, filtered, 'path');
+                    }}
+                }});
+            }}
+
+            document.getElementById('empty-state').classList.toggle('hidden', totalFound > 0);
         }}
-        
-        // Event listeners
-        document.getElementById('category-filter').addEventListener('change', renderResults);
-        document.getElementById('file-filter').addEventListener('change', renderResults);
-        document.getElementById('search-input').addEventListener('input', renderResults);
-        
-        // Initial render
-        renderResults();
+
+        function isVisible(item) {{
+            const matchesFile = activeFilters.files.length === 0 || activeFilters.files.includes(item.file);
+            const matchesSearch = activeFilters.search === "" || item.value.toLowerCase().includes(activeFilters.search);
+            return matchesFile && matchesSearch;
+        }}
+
+        function renderCategory(title, items, type) {{
+            const div = document.createElement('div');
+            div.className = 'category';
+            div.innerHTML = `<div class="category-title">${{title}} (${{items.length}})</div>`;
+            items.forEach(item => {{
+                const iDiv = document.createElement('div');
+                iDiv.className = `item ${{type}}`;
+                iDiv.textContent = item.value;
+                if (item.file) {{
+                    const tag = document.createElement('span');
+                    tag.className = 'file-tag';
+                    tag.textContent = item.file.split('/').pop();
+                    iDiv.appendChild(tag);
+                }}
+                div.appendChild(iDiv);
+            }});
+            document.getElementById('results-container').appendChild(div);
+            return items.length;
+        }}
+
+        init();
     </script>
 </body>
 </html>'''
-        
-        # Write HTML file
+
         with open(self.html_output, 'w', encoding='utf-8', errors='ignore') as f:
             f.write(html_template)
-        
         print(f'{self.GREEN}✓ HTML report generated: {self.html_output}{self.WHITE}')
+
