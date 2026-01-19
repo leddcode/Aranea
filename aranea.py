@@ -11,8 +11,8 @@ from utils import strings
 
 class Aranea(Base, Colour, Analysis, Crawler):
 
-    def __init__(self, url, threads, headers, strict, mainonly=False, continuous=False, output=None):
-        super().__init__(url, threads, headers, strict, mainonly, continuous, output)
+    def __init__(self, url, threads, headers, strict, mainonly=False, continuous=False, output=None, auto=False):
+        super().__init__(url, threads, headers, strict, mainonly, continuous, output, auto)
 
     @staticmethod
     def parse_args():
@@ -48,16 +48,20 @@ class Aranea(Base, Colour, Analysis, Crawler):
             '-c', '--continuous',
             help="For analysis mode: recursively parse found JS files.",
             action='store_true')
+        parser.add_argument(
+            '--auto',
+            help='For analysis mode with --continuous: automatically parse all files without prompting.',
+            action='store_true')
         return parser.parse_args()
 
     @staticmethod
-    def run_on_url(url, mode, threads, headers, strict, mainonly, continuous, output):
+    def run_on_url(url, mode, threads, headers, strict, mainonly, continuous, output, auto):
         """Run the specified mode on a single URL"""
         try:
             if mode in ('analysis', 'a'):
-                Aranea(url, threads, headers, strict, mainonly, continuous, output).analyze()
+                Aranea(url, threads, headers, strict, mainonly, continuous, output, auto).analyze()
             elif mode in ('crawl', 'c'):
-                Aranea(url, threads, headers, strict, mainonly, continuous, output).crawl()
+                Aranea(url, threads, headers, strict, mainonly, continuous, output, auto).crawl()
             else:
                 print(
                     f'{Aranea.RED} The mode "{mode}" does not exist!{Aranea.WHITE}')
@@ -76,6 +80,7 @@ if __name__ == '__main__':
     mainonly = args.mainonly
     continuous = args.continuous
     output = args.output
+    auto = args.auto
 
     # Collect URLs from either single URL or URL list file
     urls = []
@@ -116,4 +121,4 @@ Threads  :: {threads}
 '''
         print(banner)
         
-        Aranea.run_on_url(url, mode, threads, headers, strict, mainonly, continuous, output)
+        Aranea.run_on_url(url, mode, threads, headers, strict, mainonly, continuous, output, auto)

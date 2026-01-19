@@ -169,6 +169,7 @@ class Analysis:
                 and len(entry.strip()) < 100                   # Max Length
                 and self.__has_no_bad_char(entry.strip())      # Filter
                 and entry.strip() not in self.IGNORE_LIST      # Black List
+                and not entry.strip().endswith('.css')         # Exclude CSS files
             )
         ]
         if len(data):
@@ -322,7 +323,12 @@ class Analysis:
             visited.add(js_file)
 
             print(f'\n{self.DARKCYAN}NEXT{self.WHITE} {js_file} {self.YELLOW}({len(js_queue)} left){self.WHITE}')
-            to_parse_it = input('\nParse this file? y/N: ')
+            
+            if self.auto:
+                to_parse_it = 'y'
+            else:
+                to_parse_it = input('\nParse this file? y/N: ')
+                
             if to_parse_it.strip().lower() in ('y', 'yes'):
                 paths_found = self.__parse_js(js_file)
                 

@@ -15,7 +15,7 @@ class Base:
         'not_visited': deque([])
     }
 
-    def __init__(self, url, threads, headers, strict, mainonly=False, continuous=False, output=None):
+    def __init__(self, url, threads, headers, strict, mainonly=False, continuous=False, output=None, auto=False):
         self.base = url
         self.threads = threads
         self.headers = self.__get_headers(headers)
@@ -24,6 +24,7 @@ class Base:
         self.mainonly = mainonly
         self.continuous = continuous
         self.output_file = output
+        self.auto = auto
         self._add_not_visited(url)
 
     def __get_domain(self, url):
