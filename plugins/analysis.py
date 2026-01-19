@@ -24,6 +24,17 @@ class Analysis:
 
     REG_O = r'(?:(?:\"[a-zA-Z0-9_\-]*\"|\'[a-zA-Z0-9_\-]*\'|[a-zA-Z0-9_\-]+)\s*[:=]\s*\{(?:(?:\"[a-zA-Z0-9_\-]*\"|\'[a-zA-Z0-9_\-]*\'|[a-zA-Z0-9_\-]+)\s*:\s*(?:(?:\"[a-zA-Z0-9_\-/\\]*\"|\'[a-zA-Z0-9_\-/\\]*\'|[a-zA-Z0-9_\-/\\]+))\s*(?:,)?\s*)+\})'
     REG_L = r'(?:(?:\"[a-zA-Z0-9_\-]*\"|\'[a-zA-Z0-9_\-]*\'|[a-zA-Z0-9_\-]+)\s*[:=]\s*\[(?:(?:\"[a-zA-Z0-9_\-]*\"|\'[a-zA-Z0-9_\-]*\'|[a-zA-Z0-9_\-]+)\s*(?:,)?\s*)+\])'
+    
+    # New Regex Patterns
+    REG_AWS = r'AKIA[0-9A-Z]{16}'
+    REG_GOOGLE = r'AIza[0-9A-Za-z\-_]{35}'
+    REG_STRIPE = r'sk_live_[0-9a-zA-Z]{24}'
+    REG_JWT = r'eyJ[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*'
+    REG_PRIVATE_KEY = r'-----BEGIN PRIVATE KEY-----'
+    REG_IP = r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'
+    REG_EMAIL = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+    REG_DOM_SINK = r'innerHTML|outerHTML|document\.write|dangerouslySetInnerHTML|bypassSecurityTrustHtml'
+    REG_TODO = r'//\s*(TODO|FIXME|HACK|XXX).*'
 
     def __get_js_urls(self, url):
         http = self._get_page_source(url).text
@@ -166,6 +177,66 @@ class Analysis:
             print()
         return paths_dict
     
+    def __extract_secrets(self, js):
+        secrets = []
+        secrets.extend([f'AWS Key: {x}' for x in re.findall(self.REG_AWS, js)])
+        secrets.extend([f'Google Key: {x}' for x in re.findall(self.REG_GOOGLE, js)])
+        secrets.extend([f'Stripe Key: {x}' for x in re.findall(self.REG_STRIPE, js)])
+        secrets.extend([f'JWT: {x}' for x in re.findall(self.REG_JWT, js)])
+        secrets.extend([f'Private Key: {x}' for x in re.findall(self.REG_PRIVATE_KEY, js)])
+        
+        if secrets:
+            print(f'{self.CYAN}Secrets & Keys\n--------------{self.WHITE}')
+            for secret in set(secrets):
+                print(f'{self.RED}{secret}{self.WHITE}')
+            print()
+            
+    def __extract_emails_ips(self, js):
+        # Email & IP
+        emails = re.findall(self.REG_EMAIL, js)
+        ips = re.findall(self.REG_IP, js)
+        
+        if emails:
+            print(f'{self.CYAN}Emails\n------{self.WHITE}')
+            for email in set(emails):
+                print(f'{self.BLUE}{email}{self.WHITE}')
+            print()
+            
+        if ips:
+            # Filter unlikely IPs (very basic check)
+            valid_ips = []
+            for ip in set(ips):
+                parts = ip.split('.')
+                if all(0 <= int(part) <= 255 for part in parts):
+                    valid_ips.append(ip)
+                    
+            if valid_ips:
+                print(f'{self.CYAN}IP Addresses\n------------{self.WHITE}')
+                for ip in sorted(valid_ips):
+                    print(f'{self.ORANGE}{ip}{self.WHITE}')
+                print()
+
+    def __extract_comments(self, js):
+        todos = re.findall(self.REG_TODO, js)
+        if todos:
+             # re.findall with group returns only the group, we want the whole match or we need to adjust regex
+             # Adjusting regex to capture the full line might be safer or just iterate
+             # Let's re-run with finding full match
+             comments = re.findall(r'(//\s*(?:TODO|FIXME|HACK|XXX).*)', js)
+             if comments:
+                print(f'{self.CYAN}Developer Comments\n------------------{self.WHITE}')
+                for comment in set(comments):
+                    print(f'{self.YELLOW}{comment.strip()}{self.WHITE}')
+                print()
+
+    def __extract_sinks(self, js):
+        sinks = re.findall(self.REG_DOM_SINK, js)
+        if sinks:
+            print(f'{self.CYAN}Dangerous Functions (DOM Sinks)\n-------------------------------{self.WHITE}')
+            for sink in set(sinks):
+                print(f'{self.RED}{sink}{self.WHITE}')
+            print()
+
     def __parse_js(self, js_file):
         print(f'Fetching {self.CYAN}{js_file}{self.WHITE}')
         
@@ -177,6 +248,13 @@ class Analysis:
              content = self._get_page_source(js_file).text
 
         js = content
+        
+        # New Extractions
+        self.__extract_secrets(js)
+        self.__extract_emails_ips(js)
+        self.__extract_comments(js)
+        self.__extract_sinks(js)
+        
         objects = re.findall(self.REG_O, js) + re.findall(self.REG_L, js)
         return self.__print_objects(set(objects), js)
     
