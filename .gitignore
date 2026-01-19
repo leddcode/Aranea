@@ -2,6 +2,7 @@ test.py
 scans
 test*
 debug*
+results.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
