@@ -34,7 +34,16 @@ class Analysis:
     REG_IP = r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'
     REG_EMAIL = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
     REG_DOM_SINK = r'innerHTML|outerHTML|document\.write|dangerouslySetInnerHTML|bypassSecurityTrustHtml'
+    REG_DOM_SINK = r'innerHTML|outerHTML|document\.write|dangerouslySetInnerHTML|bypassSecurityTrustHtml'
     REG_TODO = r'//\s*(TODO|FIXME|HACK|XXX).*'
+    
+    def _log(self, message):
+        print(message)
+        if hasattr(self, 'output_file') and self.output_file:
+             # Strip ANSI codes
+             plain_message = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', message)
+             with open(self.output_file, 'a+') as f:
+                 f.write(plain_message + '\n')
 
     def __get_js_urls(self, url):
         http = self._get_page_source(url).text
@@ -163,9 +172,9 @@ class Analysis:
             )
         ]
         if len(data):
-            print(f'{self.CYAN}Available Paths\n---------------{self.WHITE}')
+            self._log(f'{self.CYAN}Available Paths\n---------------{self.WHITE}')
         else:
-            print(f'The extraction process yielded no viable {self.ORANGE}paths{self.WHITE}')
+            self._log(f'The extraction process yielded no viable {self.ORANGE}paths{self.WHITE}')
         return self.__extract_paths(data)
 
     def __pretty_entry(self, entry):
@@ -189,15 +198,15 @@ class Analysis:
         for section in mapped_objects.keys():
             if mapped_objects[section]:
                 title = f'{self.CYAN}Keyword: {self.WHITE}{section}{self.CYAN} (Total objects: {len(mapped_objects[section])})'
-                print(f'\n{title}')
-                print('-' * (len(title) - 14), self.WHITE)
+                self._log(f'\n{title}')
+                self._log('-' * (len(title) - 14) +  self.WHITE)
                 for o in mapped_objects[section]:
-                    print(f'{self.YELLOW}{self.__pretty_entry(o)}{self.WHITE}\n')
+                    self._log(f'{self.YELLOW}{self.__pretty_entry(o)}{self.WHITE}\n')
                     extracted_objects += 1
         
         # Warn - no useful data was found.
         if not extracted_objects:
-            print(f'\nThe extraction process yielded no viable {self.ORANGE}objects{self.WHITE}\n')
+            self._log(f'\nThe extraction process yielded no viable {self.ORANGE}objects{self.WHITE}\n')
         
         # Look for paths.
         return self.__print_paths(js)
@@ -205,10 +214,10 @@ class Analysis:
     def __print_paths(self, js):
         paths_dict = self.__get_paths(js)
         for k, paths in paths_dict.items():
-            print(f'{self.YELLOW}{k} {self.WHITE}(Total paths: {len(paths)})')
+            self._log(f'{self.YELLOW}{k} {self.WHITE}(Total paths: {len(paths)})')
             for path in sorted(paths):
-                print(f'{self.GREEN}{path}{self.WHITE}')
-            print()
+                self._log(f'{self.GREEN}{path}{self.WHITE}')
+            self._log('')
         return paths_dict
     
     def __extract_secrets(self, js):
@@ -220,10 +229,10 @@ class Analysis:
         secrets.extend([f'Private Key: {x}' for x in re.findall(self.REG_PRIVATE_KEY, js)])
         
         if secrets:
-            print(f'{self.CYAN}Secrets & Keys\n--------------{self.WHITE}')
+            self._log(f'{self.CYAN}Secrets & Keys\n--------------{self.WHITE}')
             for secret in set(secrets):
-                print(f'{self.RED}{secret}{self.WHITE}')
-            print()
+                self._log(f'{self.RED}{secret}{self.WHITE}')
+            self._log('')
             
     def __extract_emails_ips(self, js):
         # Email & IP
@@ -231,10 +240,10 @@ class Analysis:
         ips = re.findall(self.REG_IP, js)
         
         if emails:
-            print(f'{self.CYAN}Emails\n------{self.WHITE}')
+            self._log(f'{self.CYAN}Emails\n------{self.WHITE}')
             for email in set(emails):
-                print(f'{self.BLUE}{email}{self.WHITE}')
-            print()
+                self._log(f'{self.BLUE}{email}{self.WHITE}')
+            self._log('')
             
         if ips:
             # Filter unlikely IPs (very basic check)
@@ -245,10 +254,10 @@ class Analysis:
                     valid_ips.append(ip)
                     
             if valid_ips:
-                print(f'{self.CYAN}IP Addresses\n------------{self.WHITE}')
+                self._log(f'{self.CYAN}IP Addresses\n------------{self.WHITE}')
                 for ip in sorted(valid_ips):
-                    print(f'{self.ORANGE}{ip}{self.WHITE}')
-                print()
+                    self._log(f'{self.ORANGE}{ip}{self.WHITE}')
+                self._log('')
 
     def __extract_comments(self, js):
         todos = re.findall(self.REG_TODO, js)
@@ -258,21 +267,21 @@ class Analysis:
              # Let's re-run with finding full match
              comments = re.findall(r'(//\s*(?:TODO|FIXME|HACK|XXX).*)', js)
              if comments:
-                print(f'{self.CYAN}Developer Comments\n------------------{self.WHITE}')
+                self._log(f'{self.CYAN}Developer Comments\n------------------{self.WHITE}')
                 for comment in set(comments):
-                    print(f'{self.YELLOW}{comment.strip()}{self.WHITE}')
-                print()
+                    self._log(f'{self.YELLOW}{comment.strip()}{self.WHITE}')
+                self._log('')
 
     def __extract_sinks(self, js):
         sinks = re.findall(self.REG_DOM_SINK, js)
         if sinks:
-            print(f'{self.CYAN}Dangerous Functions (DOM Sinks)\n-------------------------------{self.WHITE}')
+            self._log(f'{self.CYAN}Dangerous Functions (DOM Sinks)\n-------------------------------{self.WHITE}')
             for sink in set(sinks):
-                print(f'{self.RED}{sink}{self.WHITE}')
-            print()
+                self._log(f'{self.RED}{sink}{self.WHITE}')
+            self._log('')
 
     def __parse_js(self, js_file):
-        print(f'Fetching {self.CYAN}{js_file}{self.WHITE}')
+        self._log(f'Fetching {self.CYAN}{js_file}{self.WHITE}')
         
         content = ""
         if os.path.exists(js_file) and not js_file.startswith(('http:', 'https:')):
@@ -330,10 +339,10 @@ class Analysis:
                              new_candidates.append(full_path)
                     
                     if new_candidates:
-                        print(f'{self.CYAN}Continuous Mode: Found {len(new_candidates)} new JS candidate(s).{self.WHITE}')
+                        self._log(f'{self.CYAN}Continuous Mode: Found {len(new_candidates)} new JS candidate(s).{self.WHITE}')
                         for full_path in new_candidates:
                              js_queue.append(full_path)
-                             print(f'{self.GREEN} + Added to queue: {full_path}{self.WHITE}')
+                             self._log(f'{self.GREEN} + Added to queue: {full_path}{self.WHITE}')
 
     def analyze(self):
         if not self.base.startswith(('http:', 'https:')) and os.path.exists(self.base):
