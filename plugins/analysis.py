@@ -824,6 +824,13 @@ class Analysis:
                 </div>
             </div>
             <div class="filter-group">
+                <label>Path Category</label>
+                <div class="multi-select" id="path-cat-select" onclick="toggleMultiSelect(this, event)">
+                    <span>Selected: <span id="path-cat-count">All</span></span>
+                    <div class="multi-select-options" id="path-cat-options"></div>
+                </div>
+            </div>
+            <div class="filter-group">
                 <label>Generic Search</label>
                 <input type="text" id="search-input" class="search-box" placeholder="Match findings by content...">
             </div>
@@ -844,6 +851,7 @@ class Analysis:
             categories: [],
             files: [],
             keywords: [],
+            path_categories: [],
             search: ""
         }};
 
@@ -867,6 +875,10 @@ class Analysis:
             const kwOptions = document.getElementById('kw-options');
             createSelectAll(kwOptions, 'keywords');
             Object.keys(data.objects || {{}}).forEach(k => createOption(kwOptions, k, 'keywords'));
+
+            const pathCatOptions = document.getElementById('path-cat-options');
+            createSelectAll(pathCatOptions, 'path_categories');
+            Object.keys(data.paths || {{}}).forEach(k => createOption(pathCatOptions, k, 'path_categories'));
             
             document.getElementById('search-input').addEventListener('input', (e) => {{
                 activeFilters.search = e.target.value.toLowerCase();
@@ -933,6 +945,7 @@ class Analysis:
             if (filterKey === 'categories') countId = 'cat-count';
             else if (filterKey === 'files') countId = 'file-count';
             else if (filterKey === 'keywords') countId = 'kw-count';
+            else if (filterKey === 'path_categories') countId = 'path-cat-count';
             
             document.getElementById(countId).textContent = 
                 activeFilters[filterKey].length === 0 ? 'All' : activeFilters[filterKey].length;
@@ -943,6 +956,7 @@ class Analysis:
                 categories: [],
                 files: [],
                 keywords: [],
+                path_categories: [],
                 search: ""
             }};
             document.getElementById('search-input').value = '';
@@ -950,6 +964,7 @@ class Analysis:
             updateFilterCount('categories');
             updateFilterCount('files');
             updateFilterCount('keywords');
+            updateFilterCount('path_categories');
             render();
         }}
 
@@ -1019,6 +1034,7 @@ class Analysis:
             // Paths
             if (activeFilters.categories.length === 0 || activeFilters.categories.includes('Paths')) {{
                 Object.entries(data.paths || {{}}).forEach(([pType, items]) => {{
+                    if (activeFilters.path_categories.length > 0 && !activeFilters.path_categories.includes(pType)) return;
                     const filtered = items.filter(item => isVisible(item));
                     if (filtered.length > 0) {{
                         totalFound += renderCategory(`Path: ${{pType}}`, filtered, 'path');
