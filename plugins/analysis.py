@@ -42,7 +42,7 @@ class Analysis:
         if hasattr(self, 'output_file') and self.output_file:
              # Strip ANSI codes
              plain_message = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', message)
-             with open(self.output_file, 'a+') as f:
+             with open(self.output_file, 'a+', encoding='utf-8', errors='ignore') as f:
                  f.write(plain_message + '\n')
 
     def __get_js_urls(self, url):
@@ -286,7 +286,7 @@ class Analysis:
         
         content = ""
         if os.path.exists(js_file) and not js_file.startswith(('http:', 'https:')):
-             with open(js_file, 'r') as f:
+             with open(js_file, 'r', encoding='utf-8', errors='ignore') as f:
                  content = f.read()
         else:
              content = self._get_page_source(js_file).text
