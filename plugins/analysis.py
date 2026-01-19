@@ -71,22 +71,56 @@ class Analysis:
             self.__add_to_dict('AWS', path, paths)
         elif 'github' in path.lower():
             self.__add_to_dict('Github', path, paths)
+        elif 'gitlab.com' in path.lower():
+            self.__add_to_dict('GitLab', path, paths)
+        elif 'bitbucket.org' in path.lower():
+            self.__add_to_dict('Bitbucket', path, paths)
+        elif 'atlassian.net' in path.lower():
+            self.__add_to_dict('Jira/Atlassian', path, paths)
+        elif any(kw in path.lower() for kw in ('docs.google.com', 'drive.google.com', 'sheets.google.com')):
+            self.__add_to_dict('Google Docs/Drive', path, paths)
+        elif 'slack.com' in path.lower():
+            self.__add_to_dict('Slack', path, paths)
+        elif 'discord' in path.lower():
+            self.__add_to_dict('Discord', path, paths)
         elif 'blob.core.windows' in path.lower():
             self.__add_to_dict('Azure Containers', path, paths)
+        elif 'storage.googleapis.com' in path.lower():
+            self.__add_to_dict('Google Cloud Storage', path, paths)
+        elif 'digitaloceanspaces.com' in path.lower():
+            self.__add_to_dict('DigitalOcean Spaces', path, paths)
+        elif 'herokuapp.com' in path.lower():
+            self.__add_to_dict('Heroku App', path, paths)
         elif 'firebase' in path.lower():
             self.__add_to_dict('Firebase', path, paths)
+        elif 'sentry.io' in path.lower():
+            self.__add_to_dict('Sentry', path, paths)
+        elif 'cloudinary.com' in path.lower():
+            self.__add_to_dict('Cloudinary', path, paths)
+        elif 'auth0.com' in path.lower() or 'okta.com' in path.lower():
+            self.__add_to_dict('Auth Provider', path, paths)
+        elif 'twilio.com' in path.lower():
+             self.__add_to_dict('Twilio', path, paths)
+        elif 'mailgun' in path.lower() or 'sendgrid' in path.lower():
+             self.__add_to_dict('Email Provider', path, paths)
+        elif 'paypal.com' in path.lower():
+             self.__add_to_dict('PayPal', path, paths)
         elif '.json' in path.lower():
             self.__add_to_dict('JSON Files', path, paths)
         elif '.js' in path.lower():
             self.__add_to_dict('JS Files', path, paths)
         elif '.ts' in path.lower():
             self.__add_to_dict('TS Files', path, paths)
-        elif any(kw in path.lower() for kw in ('.png', '.jpg', '.gif', '.svg')):
+        elif any(kw in path.lower() for kw in ('.png', '.jpg', '.gif', '.svg', '.webp')):
             self.__add_to_dict('Images', path, paths)
         elif 'module' in path.lower():
             self.__add_to_dict('Modules', path, paths)
         
         # Additional keywords.
+        elif any(kw in path.lower() for kw in ('graphql', 'graph')):
+             self.__add_to_dict('GraphQL', path, paths)
+        elif any(kw in path.lower() for kw in ('swagger', 'openapi', 'api-docs')):
+             self.__add_to_dict('API Docs', path, paths)
         elif 'api' in path.lower():
             self.__add_to_dict('API Paths', path, paths)
         elif any(kw in path.lower() for kw in ('login', 'register')):
