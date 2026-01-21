@@ -118,6 +118,13 @@ class Analysis:
              self.__add_to_dict('Email Provider', path, paths)
         elif 'paypal.com' in path.lower():
              self.__add_to_dict('PayPal', path, paths)
+        elif 'stripe.com' in path.lower():
+             self.__add_to_dict('Stripe', path, paths)
+        elif 'squareup.com' in path.lower():
+             self.__add_to_dict('Square', path, paths)
+        elif 'youtube.com' in path.lower():
+             self.__add_to_dict('YouTube', path, paths)
+        
         elif '.json' in path.lower():
             self.__add_to_dict('JSON Files', path, paths)
         elif '.js' in path.lower():
@@ -174,6 +181,10 @@ class Analysis:
                 and self.__has_no_bad_char(entry.strip())      # Filter
                 and entry.strip() not in self.IGNORE_LIST      # Black List
                 and not entry.strip().endswith('.css')         # Exclude CSS files
+                and not entry.strip().endswith('.otf')
+                and not entry.strip().endswith('.woff')
+                and not entry.strip().endswith('.woff2')
+                and not entry.strip().endswith('.ico')
             )
         ]
         if len(data):
