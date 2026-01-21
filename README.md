@@ -39,6 +39,7 @@ optional arguments:
   -c, --continuous      For analysis mode: recursively parse found JS files.
   -o OUTPUT, --output OUTPUT
                         Output file to save analysis results (analysis mode only).
+  --no NO               Exclude categories from output (e.g., --no assets,js,images,modules,json,ts)
 ```
 
 ## Modes
@@ -148,6 +149,15 @@ Save the output of the analysis to a file:
 
 ```sh
 python3 aranea.py -u https://example.com -m a -o results.txt
+```
+
+### Excluding Categories
+
+Reduce noise by excluding specific categories from the output:
+
+```sh
+python3 aranea.py -u https://example.com -m a --no assets,js,images,modules,json,ts
+```
 ```
 
 ### Short Aliases

@@ -212,6 +212,10 @@ class Analysis:
         extracted_objects = 0
         mapped_objects = self.__map_objects(objects)
         for section in mapped_objects.keys():
+            # Check for exclusion
+            if any(x in section.lower() for x in self.no_log):
+                continue
+
             if mapped_objects[section]:
                 title = f'{self.CYAN}Keyword: {self.WHITE}{section}{self.CYAN} (Total objects: {len(mapped_objects[section])})'
                 self._log(f'\n{title}')
@@ -238,6 +242,11 @@ class Analysis:
     def __print_paths(self, js, js_file=''):
         paths_dict = self.__get_paths(js)
         for k, paths in paths_dict.items():
+            # Check for exclusion
+            # normalize key for comparison (e.g. 'JS Files' -> 'js')
+            if any(x in k.lower() for x in self.no_log):
+                continue
+                
             self._log(f'{self.YELLOW}{k} {self.WHITE}(Total paths: {len(paths)})')
             for path in sorted(paths):
                 self._log(f'{self.GREEN}{path}{self.WHITE}')
@@ -258,13 +267,14 @@ class Analysis:
         secrets.extend([f'Private Key: {x}' for x in re.findall(self.REG_PRIVATE_KEY, js)])
         
         if secrets:
-            self._log(f'{self.CYAN}Secrets & Keys\n--------------{self.WHITE}')
-            for secret in set(secrets):
-                self._log(f'{self.RED}{secret}{self.WHITE}')
-                # Collect for HTML report
-                if hasattr(self, 'html_data'):
-                    self.html_data['secrets'].append({'value': self.__strip_ansi(secret), 'file': js_file})
-            self._log('')
+            if 'secrets' not in self.no_log and 'keys' not in self.no_log:
+                self._log(f'{self.CYAN}Secrets & Keys\n--------------{self.WHITE}')
+                for secret in set(secrets):
+                    self._log(f'{self.RED}{secret}{self.WHITE}')
+                    # Collect for HTML report
+                    if hasattr(self, 'html_data'):
+                        self.html_data['secrets'].append({'value': self.__strip_ansi(secret), 'file': js_file})
+                self._log('')
             
     def __extract_emails_ips(self, js, js_file=''):
         # Email & IP
@@ -272,13 +282,14 @@ class Analysis:
         ips = re.findall(self.REG_IP, js)
         
         if emails:
-            self._log(f'{self.CYAN}Emails\n------{self.WHITE}')
-            for email in set(emails):
-                self._log(f'{self.BLUE}{email}{self.WHITE}')
-                # Collect for HTML report
-                if hasattr(self, 'html_data'):
-                    self.html_data['emails'].append({'value': self.__strip_ansi(email), 'file': js_file})
-            self._log('')
+            if 'emails' not in self.no_log:
+                self._log(f'{self.CYAN}Emails\n------{self.WHITE}')
+                for email in set(emails):
+                    self._log(f'{self.BLUE}{email}{self.WHITE}')
+                    # Collect for HTML report
+                    if hasattr(self, 'html_data'):
+                        self.html_data['emails'].append({'value': self.__strip_ansi(email), 'file': js_file})
+                self._log('')
             
         if ips:
             # Filter unlikely IPs (very basic check)
@@ -289,13 +300,14 @@ class Analysis:
                     valid_ips.append(ip)
                     
             if valid_ips:
-                self._log(f'{self.CYAN}IP Addresses\n------------{self.WHITE}')
-                for ip in sorted(valid_ips):
-                    self._log(f'{self.ORANGE}{ip}{self.WHITE}')
-                    # Collect for HTML report
-                    if hasattr(self, 'html_data'):
-                        self.html_data['ips'].append({'value': self.__strip_ansi(ip), 'file': js_file})
-                self._log('')
+                if 'ips' not in self.no_log:
+                    self._log(f'{self.CYAN}IP Addresses\n------------{self.WHITE}')
+                    for ip in sorted(valid_ips):
+                        self._log(f'{self.ORANGE}{ip}{self.WHITE}')
+                        # Collect for HTML report
+                        if hasattr(self, 'html_data'):
+                            self.html_data['ips'].append({'value': self.__strip_ansi(ip), 'file': js_file})
+                    self._log('')
 
     def __extract_comments(self, js, js_file=''):
         todos = re.findall(self.REG_TODO, js)
@@ -305,24 +317,26 @@ class Analysis:
              # Let's re-run with finding full match
              comments = re.findall(r'(//\s*(?:TODO|FIXME|HACK|XXX).*)', js)
              if comments:
-                self._log(f'{self.CYAN}Developer Comments\n------------------{self.WHITE}')
-                for comment in set(comments):
-                    self._log(f'{self.YELLOW}{comment.strip()}{self.WHITE}')
-                    # Collect for HTML report
-                    if hasattr(self, 'html_data'):
-                        self.html_data['comments'].append({'value': self.__strip_ansi(comment.strip()), 'file': js_file})
-                self._log('')
+                if 'comments' not in self.no_log and 'todos' not in self.no_log:
+                    self._log(f'{self.CYAN}Developer Comments\n------------------{self.WHITE}')
+                    for comment in set(comments):
+                        self._log(f'{self.YELLOW}{comment.strip()}{self.WHITE}')
+                        # Collect for HTML report
+                        if hasattr(self, 'html_data'):
+                            self.html_data['comments'].append({'value': self.__strip_ansi(comment.strip()), 'file': js_file})
+                    self._log('')
 
     def __extract_sinks(self, js, js_file=''):
         sinks = re.findall(self.REG_DOM_SINK, js)
         if sinks:
-            self._log(f'{self.CYAN}Dangerous Functions (DOM Sinks)\n-------------------------------{self.WHITE}')
-            for sink in sorted(set(sinks)):
-                self._log(f'{self.RED}{sink}{self.WHITE}')
-                # Collect for HTML report
-                if hasattr(self, 'html_data'):
-                    self.html_data['sinks'].append({'value': self.__strip_ansi(sink), 'file': js_file})
-            self._log('')
+            if 'sinks' not in self.no_log and 'dangerous' not in self.no_log:
+                self._log(f'{self.CYAN}Dangerous Functions (DOM Sinks)\n-------------------------------{self.WHITE}')
+                for sink in sorted(set(sinks)):
+                    self._log(f'{self.RED}{sink}{self.WHITE}')
+                    # Collect for HTML report
+                    if hasattr(self, 'html_data'):
+                        self.html_data['sinks'].append({'value': self.__strip_ansi(sink), 'file': js_file})
+                self._log('')
 
     def __parse_js(self, js_file):
         self._log(f'Fetching {self.CYAN}{js_file}{self.WHITE}')
