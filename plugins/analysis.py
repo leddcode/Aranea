@@ -171,20 +171,37 @@ class Analysis:
     def __has_no_bad_char(self, s: str):
         return not any(char in self.BAD_CHARS for char in s.strip())
 
+    # Regex to extract contents of JS string literals:
+    # group 1 = double-quoted, group 2 = single-quoted, group 3 = template literal (backtick)
+    _RE_JS_STRINGS = re.compile(
+        r'"((?:[^"\\]|\\.)*)"|\'((?:[^\'\\]|\\.)*)'
+        r'|`((?:[^`\\]|\\.)*)`',
+        re.DOTALL
+    )
+    # Template literal interpolation pattern  ${...}
+    _RE_INTERP = re.compile(r'\$\{[^}]*\}')
+
+    def __extract_js_strings(self, js):
+        """Yield all string literal contents from JS (double, single, backtick quotes)."""
+        for m in self._RE_JS_STRINGS.finditer(js):
+            raw = m.group(1) or m.group(2) or m.group(3) or ''
+            # Strip template-literal interpolations so ${lang} etc. don't trigger BAD_CHARS
+            yield self._RE_INTERP.sub('', raw).strip()
+
     def __get_paths(self, js):
         data = [
-            entry.strip() for entry in set(js.split('"'))
+            entry for entry in set(self.__extract_js_strings(js))
             if (
-                '/' in entry.strip()                           # Possible Path
-                and len(entry.strip()) > 2                     # Min Length
-                and len(entry.strip()) < 100                   # Max Length
-                and self.__has_no_bad_char(entry.strip())      # Filter
-                and entry.strip() not in self.IGNORE_LIST      # Black List
-                and not entry.strip().endswith('.css')         # Exclude CSS files
-                and not entry.strip().endswith('.otf')
-                and not entry.strip().endswith('.woff')
-                and not entry.strip().endswith('.woff2')
-                and not entry.strip().endswith('.ico')
+                '/' in entry                           # Possible Path
+                and len(entry) > 2                     # Min Length
+                and len(entry) < 100                   # Max Length
+                and self.__has_no_bad_char(entry)      # Filter
+                and entry not in self.IGNORE_LIST      # Black List
+                and not entry.endswith('.css')         # Exclude CSS files
+                and not entry.endswith('.otf')
+                and not entry.endswith('.woff')
+                and not entry.endswith('.woff2')
+                and not entry.endswith('.ico')
             )
         ]
         if len(data):
